@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="no">
+<head>
+    <meta charset="utf-8" />
+    <title>Neste avganger – fra/til</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root { color-scheme: light dark; }
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }
+        header { display: grid; gap: .5rem; margin-bottom: 1rem; }
+        h1 { margin: 0; font-size: 1.5rem; }
+        .muted { color: #666; }
+        form { display: grid; gap: .5rem; align-items: start; max-width: 720px; }
+        .row { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
+        .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+        .field { position: relative; }
+        input[type="text"] { width: 100%; padding: .65rem .8rem; border: 1px solid #bbb; border-radius: 10px; min-width: 8rem; }
+        button { padding: .65rem .9rem; border: 0; border-radius: 10px; cursor: pointer; }
+        .panel { border: 1px solid #bbb; border-radius: 12px; padding: 1rem; margin-top: 1rem; }
+        .ok { color: #2e7d32; } .err { color: #b00020; } .info { color: #555; }
+        .grid { display: grid; gap: .5rem; }
+        .dep-row { display: grid; grid-template-columns: 5rem 1fr auto; gap: .75rem; align-items: center; border: 1px solid #bbb; border-radius: 12px; padding: .7rem .9rem; }
+        .code { font-weight: 600; }
+        .time { font-variant-numeric: tabular-nums; font-weight: 600; }
+        @media (max-width: 640px) { .inputs { grid-template-columns: 1fr; } }
+
+        /* Autocomplete */
+        .ac { position: absolute; inset: auto 0 0 0; transform: translateY(calc(100% + 6px)); background: canvas; border: 1px solid #bbb; border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.08); overflow: hidden; z-index: 10; }
+        .ac[hidden] { display:none; }
+        .ac ul { margin: 0; padding: 4px; list-style: none; max-height: 280px; overflow: auto; }
+        .ac li { border-radius: 8px; padding: .55rem .6rem; cursor: pointer; display: grid; gap: 2px; }
+        .ac li[aria-selected="true"], .ac li:hover { background: color-mix(in oklab, canvasText 12%, canvas); }
+        .ac .title { font-weight: 600; }
+        .ac .sub { font-size: .9em; opacity: .7; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Neste 10 avganger</h1>
+    <p class="muted">Søk etter <b>fra</b>- og <b>til</b>-stopp. Forslag kommer mens du skriver (f.eks. «major», «jerns», «NSR:Quay:101991»).</p>
+    <form id="form" autocomplete="off">
+        <div class="inputs">
+            <div class="field">
+                <label class="muted" for="fromInput">Fra</label>
+                <input id="fromInput" type="text" placeholder="Startstopp" inputmode="search" aria-autocomplete="list" aria-haspopup="listbox" />
+                <div id="acFrom" class="ac" role="listbox" hidden></div>
+            </div>
+            <div class="field">
+                <label class="muted" for="toInput">Til</label>
+                <input id="toInput" type="text" placeholder="Sluttstopp" inputmode="search" aria-autocomplete="list" aria-haspopup="listbox" />
+                <div id="acTo" class="ac" role="listbox" hidden></div>
+            </div>
+        </div>
+        <div class="row">
+            <div>
+                <small class="muted">Tips: Skriv et par bokstaver – vi viser stopp som matcher initialene.</small>
+            </div>
+            <div style="display:flex;gap:.5rem;align-items:center;">
+                <button type="submit">Hent avganger</button>
+                <span id="msg" class="info" aria-live="polite"></span>
+            </div>
+        </div>
+    </form>
+</header>
+
+<section id="result" class="panel" hidden>
+    <h2 id="stopTitle" style="margin-top:0;"></h2>
+    <div id="list" class="grid"></div>
+</section>
+
+<script>
+    /**
+     * Denne versjonen legger til autosøk/forlag for stopp.
+     * Den forventer en backend-endepunkt:
+     *   GET /api/entur/stops?q=<tekst>&limit=8
+     * som returnerer { stops: [{ id, name, locality, type, quayId? }] }
+     *
+     * Du kan mappe dette mot Entur Geocoder Autocomplete i backend, f.eks.:
+     *   https://api.entur.io/geocoder/v1/autocomplete?text=<q>&lang=no&size=<limit>&layers=stop
+     * og returnere StopPlace/Quay med id/navn/municipality.
+     */
+
+    const form = document.getElementById('form');
+    const fromInput = document.getElementById('fromInput');
+    const toInput = document.getElementById('toInput');
+    const acFrom = document.getElementById('acFrom');
+    const acTo = document.getElementById('acTo');
+    const msg = document.getElementById('msg');
+    const result = document.getElementById('result');
+    const stopTitle = document.getElementById('stopTitle');
+    const list = document.getElementById('list');
+
+    // Hold valgt stopp-id på input.dataset.stopId
+    fromInput.dataset.stopId = '';
+    toInput.dataset.stopId = '';
+
+    // Init autocomplete på begge felt
+    attachAutocomplete(fromInput, acFrom, pickFrom);
+    attachAutocomplete(toInput, acTo, pickTo);
+
+    function pickFrom(item){
+        fromInput.value = item.name;
+        fromInput.dataset.stopId = item.id;
+    }
+    function pickTo(item){
+        toInput.value = item.name;
+        toInput.dataset.stopId = item.id;
+    }
+
+    form.addEventListener('submit', onSubmit);
+
+    async function onSubmit(e){
+        e.preventDefault();
+        msg.className = 'info';
+        result.hidden = true;
+        list.innerHTML = '';
+
+        const fromId = (fromInput.dataset.stopId || '').trim();
+        const toId = (toInput.dataset.stopId || '').trim();
+
+        if(!fromId || !toId){
+            msg.className = 'err';
+            msg.textContent = 'Velg både fra- og til-stopp fra listen.';
+            return;
+        }
+
+        // Demo: Hent avganger fra FRA-stoppet (som i originalkoden).
+        // Du kan senere bytte til reiseplanlegger mellom fraId -> toId.
+        try {
+            msg.textContent = 'Henter avganger …';
+            const quayId = normalizeQuay(fromId);
+            const url = `/api/entur/departures?quay_id=${encodeURIComponent(quayId)}&limit=10`;
+            const resp = await fetch(url, { method:'GET', headers:{ 'Accept':'application/json' }, credentials:'include' });
+
+            if (resp.status === 401) { msg.className = 'err'; msg.textContent = 'Du er ikke innlogget (401). Logg inn og prøv igjen.'; return; }
+            if (!resp.ok) throw new Error(await resp.text().catch(()=>`Feil fra server: ${resp.status}`));
+
+            const data = await resp.json();
+            const quay = data?.data?.quay; const calls = quay?.estimatedCalls || []; const title = quay?.name || fromId;
+
+            if (!Array.isArray(calls) || calls.length === 0) {
+                msg.className = 'info'; msg.textContent = 'Ingen avganger funnet akkurat nå.';
+                result.hidden = false; stopTitle.textContent = title; return;
+            }
+
+            list.innerHTML = '';
+            for (const c of calls.slice(0, 10)) {
+                const line = c?.serviceJourney?.journeyPattern?.line || {};
+                const code = line.publicCode || '—';
+                const name = line.name || '';
+                const ts = c?.expectedDepartureTime || null;
+                const time = ts ? formatLocalTime(ts) : '—';
+                const row = document.createElement('div');
+                row.className = 'dep-row';
+                row.innerHTML = `
+          <div class="code">${escapeHtml(code)}</div>
+          <div>${escapeHtml(name)}</div>
+          <div class="time">${escapeHtml(time)}</div>
+        `;
+                list.appendChild(row);
+            }
+
+            stopTitle.textContent = `${fromInput.value} → ${toInput.value}`;
+            result.hidden = false; msg.textContent = '';
+        } catch (err) {
+            console.error(err);
+            msg.className = 'err'; msg.textContent = 'Kunne ikke hente avganger.';
+        }
+    }
+
+    // -------- Autocomplete ----------
+    function attachAutocomplete(inputEl, panelEl, onPick){
+        let items = []; // sist returnerte forslag
+        let highlighted = -1; // index i items
+        const debounced = debounce(handleInput, 200);
+
+        inputEl.addEventListener('input', () => { inputEl.dataset.stopId = ''; debounced(); });
+        inputEl.addEventListener('focus', () => { if (panelEl.children.length) panelEl.hidden = false; });
+        document.addEventListener('click', (e) => { if (!panelEl.contains(e.target) && e.target !== inputEl) panelEl.hidden = true; });
+
+        inputEl.addEventListener('keydown', (e) => {
+            const max = items.length - 1;
+            if (panelEl.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) panelEl.hidden = false;
+            if (e.key === 'ArrowDown') { e.preventDefault(); highlighted = Math.min(max, highlighted + 1); updateHighlight(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); highlighted = Math.max(0, highlighted - 1); updateHighlight(); }
+            else if (e.key === 'Enter') {
+                if (!panelEl.hidden && highlighted >= 0) { e.preventDefault(); pick(items[highlighted]); }
+            } else if (e.key === 'Escape') { panelEl.hidden = true; }
+        });
+
+        async function handleInput(){
+            const q = (inputEl.value || '').trim();
+            if (!q || q.length < 2) { panelEl.hidden = true; panelEl.innerHTML = ''; return; }
+            try {
+                const url = `/api/entur/stops?q=${encodeURIComponent(q)}&limit=8`;
+                const r = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'include' });
+                if (!r.ok) throw new Error(await r.text().catch(()=>`Feil ${r.status}`));
+                const data = await r.json();
+                items = normalizeStops(data?.stops || data?.data || []);
+                render(items);
+            } catch (err){
+                console.error('Stops search failed', err);
+                items = [];
+                panelEl.hidden = true; panelEl.innerHTML = '';
+            }
+        }
+
+        function render(list){
+            if (!Array.isArray(list) || list.length === 0) { panelEl.hidden = true; panelEl.innerHTML = ''; return; }
+            highlighted = -1;
+            panelEl.hidden = false;
+            const ul = document.createElement('ul');
+            list.forEach((it, i) => {
+                const li = document.createElement('li');
+                li.role = 'option';
+                li.id = `${inputEl.id}-opt-${i}`;
+                li.innerHTML = `
+          <div class="title">${escapeHtml(it.name)}</div>
+          <div class="sub">${escapeHtml(it.locality || it.type || '')}${it.id ? ` · ${escapeHtml(it.id)}` : ''}</div>
+        `;
+                li.addEventListener('mousedown', (e) => { e.preventDefault(); pick(it); });
+                ul.appendChild(li);
+            });
+            panelEl.innerHTML = ''; panelEl.appendChild(ul);
+            inputEl.setAttribute('aria-expanded', 'true');
+        }
+
+        function updateHighlight(){
+            const lis = panelEl.querySelectorAll('li');
+            lis.forEach((li, idx) => li.setAttribute('aria-selected', String(idx === highlighted)) );
+            if (highlighted >= 0 && lis[highlighted]) lis[highlighted].scrollIntoView({ block: 'nearest' });
+        }
+
+        function pick(item){
+            onPick(item);
+            panelEl.hidden = true; inputEl.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function normalizeStops(raw){
+        // Forsøk å støtte flere mulige backend-formater
+        return raw.map(x => ({
+            id: x.id || x.quayId || x.quay_id || x.gid || '',
+            name: x.name || x.label || x.title || '',
+            locality: x.locality || x.municipality || x.county || x.layer || '',
+            type: x.type || x.layer || ''
+        })).filter(x => x.name);
+    }
+
+    // Utils
+    function debounce(fn, ms){ let t; return (...a) => { clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; }
+    function normalizeQuay(s){ return /^\d+$/.test(s) ? `NSR:Quay:${s}` : s; }
+    function formatLocalTime(isoString){ try{ const d = new Date(isoString); return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return '—'; } }
+    function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
+</script>
+</body>
+</html>
+

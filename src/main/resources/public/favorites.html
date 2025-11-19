@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="no">
+<head>
+    <meta charset="utf-8" />
+    <title>Mine favoritter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root { color-scheme: light dark; }
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }
+        header { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem; }
+        .btn { padding: 0.6rem 0.8rem; border-radius: 8px; border: 0; cursor:pointer; }
+        .row { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+        .muted { opacity:.8; }
+        ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
+        li { border: 1px solid #bbb; border-radius: 10px; padding: .75rem; display:grid; gap:.35rem; }
+        .meta { font-size: .9rem; color: #666; display:flex; gap:1rem; flex-wrap:wrap; }
+        form.inline { display:flex; gap:.5rem; align-items:center; flex-wrap: wrap; }
+        form.block { max-width: 520px; display:grid; gap:.6rem; margin: 1rem 0 1.25rem; }
+        input { padding: .45rem .55rem; border: 1px solid #bbb; border-radius: 8px; }
+        input[type=number] { width: 7rem; }
+        label { display:grid; gap:.25rem; }
+        #msg { min-height: 1.2em; margin:.5rem 0 1rem; }
+        .ok { color: #2e7d32; } .err { color: #b00020; } .info { color: #555; }
+        .panel { border:1px dashed #888; border-radius:10px; padding:1rem; margin:.5rem 0 1rem; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Mine favoritter</h1>
+    <div class="row">
+        <button id="reloadBtn" class="btn" type="button">Oppdater</button>
+        <button id="logoutBtn" class="btn" type="button">Logg ut</button>
+        <a href="index.html" class="muted">↪ Til innlogging</a>
+    </div>
+</header>
+
+<!-- Panel som kun vises når bruker ikke er innlogget -->
+<div id="notAuthPanel" class="panel" hidden>
+    <p id="notAuthText" class="err" style="margin:0 0 .5rem 0;">Du er ikke innlogget.</p>
+    <div class="row">
+        <button id="goLoginBtn" class="btn" type="button">Gå til innlogging</button>
+        <button id="tryAgainBtn" class="btn" type="button">Prøv igjen</button>
+    </div>
+</div>
+
+<!-- Legg til ny favoritt (valgfritt) -->
+<section>
+    <h2 style="margin:.25rem 0 0;">Legg til favoritt</h2>
+    <form id="addForm" class="block" autocomplete="on">
+        <label>
+            Quay ID (f.eks. 101991 eller NSR:Quay:101991)
+            <input name="quay_id" required />
+        </label>
+        <label>
+            Note (valgfritt)
+            <input name="note" />
+        </label>
+        <button type="submit" class="btn">Legg til</button>
+    </form>
+</section>
+
+<p id="msg" class="info" aria-live="polite">Laster favoritter…</p>
+
+<section>
+    <ul id="favList" hidden></ul>
+</section>
+
+<script>
+    const msg = document.getElementById('msg');
+    const list = document.getElementById('favList');
+    const addForm = document.getElementById('addForm');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    const notAuthPanel = document.getElementById('notAuthPanel');
+    const notAuthText  = document.getElementById('notAuthText');
+    const goLoginBtn   = document.getElementById('goLoginBtn');
+    const tryAgainBtn  = document.getElementById('tryAgainBtn');
+
+    addForm.addEventListener('submit', onAddFavorite);
+    reloadBtn.addEventListener('click', loadFavorites);
+    logoutBtn.addEventListener('click', onLogout);
+    goLoginBtn.addEventListener('click', () => location.href = 'index.html');
+    tryAgainBtn.addEventListener('click', loadFavorites);
+
+    // --- Hovedlasting av favoritter ---
+    async function loadFavorites() {
+        hideNotAuth();
+        msg.className = 'info';
+        msg.textContent = 'Laster favoritter…';
+
+        try {
+            const resp = await fetch('/api/favorites', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                credentials: 'include'
+            });
+
+            // Ikke innlogget
+            if (resp.status === 401) {
+                showNotAuth('Du er ikke innlogget (401). Logg inn for å se favoritter.');
+                list.hidden = true;
+                msg.textContent = '';
+                return;
+            }
+
+            const ct = resp.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                // Server ga sannsynligvis HTML (f.eks. redirectet til login). Ikke auto-redirect her.
+                showNotAuth('Kunne ikke hente JSON fra serveren. Er du innlogget?');
+                list.hidden = true;
+                msg.textContent = '';
+                return;
+            }
+
+            if (!resp.ok) {
+                const errText = await resp.text().catch(() => '');
+                throw new Error(errText || `Status ${resp.status}`);
+            }
+
+            let data = await resp.json();
+            if (!Array.isArray(data)) data = [];
+
+            // Klientsortering hvis API ikke gjør det
+            data.sort((a, b) => {
+                const pa = a.position ?? 999999, pb = b.position ?? 999999;
+                if (pa !== pb) return pa - pb;
+                const ca = a.created_at || '', cb = b.created_at || '';
+                return ca.localeCompare(cb);
+            });
+
+            renderList(data);
+            msg.textContent = '';
+        } catch (e) {
+            msg.className = 'err';
+            msg.textContent = 'Feil ved lasting av favoritter.';
+        }
+    }
+
+    function renderList(items) {
+        list.innerHTML = '';
+        if (!items.length) {
+            msg.className = 'info';
+            msg.textContent = '(Ingen favoritter enda)';
+            list.hidden = true;
+            return;
+        }
+        list.hidden = false;
+
+        for (const it of items) {
+            const li = document.createElement('li');
+
+            const title = document.createElement('div');
+            title.innerHTML = `<strong>${escapeHtml(it.quay_id || 'Ukjent quay')}</strong>${it.note ? ' – ' + escapeHtml(it.note) : ''}`;
+            li.appendChild(title);
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.innerHTML = `
+          <span>Position: <strong>${it.position ?? '—'}</strong></span>
+          ${it.created_at ? `<span>Opprettet: ${escapeHtml(it.created_at)}</span>` : ''}
+        `;
+            li.appendChild(meta);
+
+            // Skjema for å endre rekkefølge (position)
+            const form = document.createElement('form');
+            form.className = 'inline';
+            form.innerHTML = `
+          <label>Ny position:
+            <input name="position" type="number" min="1" required />
+          </label>
+          <input type="hidden" name="quay_id" value="${escapeAttr(it.quay_id || '')}" />
+          <button class="btn" type="submit">Oppdater</button>
+        `;
+            form.addEventListener('submit', onSetPosition);
+            li.appendChild(form);
+
+            list.appendChild(li);
+        }
+    }
+
+    async function onSetPosition(e) {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const fd = new FormData(form);
+
+        const quayId = (fd.get('quay_id') || '').toString().trim();
+        const position = parseInt((fd.get('position') || '').toString().trim(), 10);
+
+        if (!quayId || !(position >= 1)) {
+            msg.className = 'err';
+            msg.textContent = 'Ugyldige verdier.';
+            return;
+        }
+
+        msg.className = 'info';
+        msg.textContent = 'Oppdaterer…';
+
+        try {
+            const body = new URLSearchParams();
+            body.set('quay_id', quayId);
+            body.set('position', String(position));
+
+            const resp = await fetch('/api/favorites/position', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                credentials: 'include',
+                body
+            });
+
+            if (resp.status === 401) {
+                showNotAuth('Sesjonen er utløpt (401). Logg inn på nytt.');
+                msg.textContent = '';
+                return;
+            }
+            if (!resp.ok) {
+                const txt = await resp.text().catch(() => '');
+                throw new Error(txt || `Status ${resp.status}`);
+            }
+
+            msg.className = 'ok';
+            msg.textContent = 'Position oppdatert ✅';
+            await loadFavorites();
+        } catch (err) {
+            msg.className = 'err';
+            msg.textContent = 'Kunne ikke oppdatere position.';
+        }
+    }
+
+    async function onAddFavorite(e) {
+        e.preventDefault();
+        const fd = new FormData(addForm);
+
+        const rawQuay = (fd.get('quay_id') || '').toString().trim();
+        const note = (fd.get('note') || '').toString().trim();
+
+        if (!rawQuay) {
+            msg.className = 'err';
+            msg.textContent = 'Skriv inn en Quay ID.';
+            return;
+        }
+
+        // Normaliser: bare tall -> prefiksér
+        const quayId = /^\d+$/.test(rawQuay) ? `NSR:Quay:${rawQuay}` : rawQuay;
+
+        msg.className = 'info';
+        msg.textContent = 'Legger til favoritt…';
+
+        try {
+            const body = new URLSearchParams();
+            body.set('quay_id', quayId);
+            if (note) body.set('note', note);
+
+            const resp = await fetch('/api/favorites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                credentials: 'include',
+                body
+            });
+
+            if (resp.status === 401) {
+                showNotAuth('Du er ikke innlogget (401). Logg inn for å legge til favoritter.');
+                msg.textContent = '';
+                return;
+            }
+            if (resp.status === 409) {
+                msg.className = 'err';
+                msg.textContent = 'Favoritten finnes allerede.';
+                return;
+            }
+            if (!resp.ok) {
+                const txt = await resp.text().catch(() => '');
+                throw new Error(txt || `Status ${resp.status}`);
+            }
+
+            msg.className = 'ok';
+            msg.textContent = 'Favoritt lagt til ✅';
+            addForm.reset();
+            await loadFavorites();
+        } catch (err) {
+            msg.className = 'err';
+            msg.textContent = 'Kunne ikke legge til favoritt.';
+        }
+    }
+
+    async function onLogout() {
+        msg.className = 'info';
+        msg.textContent = 'Logger ut…';
+        hideNotAuth();
+
+        try {
+            const resp = await fetch('/logout', {
+                method: 'POST',
+                credentials: 'include'
+            });
+            // Uansett svar, vi regner med at sesjonen er borte
+            msg.className = 'ok';
+            msg.textContent = 'Du er logget ut. Du kan gå til innlogging når du vil.';
+            showNotAuth('Du er logget ut.'); // Vis panel med knapper
+            list.hidden = true;
+        } catch {
+            msg.className = 'err';
+            msg.textContent = 'Klarte ikke å kontakte serveren for utlogging.';
+        }
+    }
+
+    function showNotAuth(text) {
+        notAuthText.textContent = text || 'Du er ikke innlogget.';
+        notAuthPanel.hidden = false;
+    }
+    function hideNotAuth() {
+        notAuthPanel.hidden = true;
+    }
+
+    // enkel escaping
+    function escapeHtml(s) {
+        return String(s)
+            .replaceAll('&','&amp;')
+            .replaceAll('<','&lt;')
+            .replaceAll('>','&gt;')
+            .replaceAll('"','&quot;')
+            .replaceAll("'",'&#39;');
+    }
+    function escapeAttr(s) { return escapeHtml(s); }
+
+    loadFavorites();
+</script>
+</body>
+</html>

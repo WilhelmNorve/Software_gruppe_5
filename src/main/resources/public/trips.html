@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <title>Finn rute</title>
+</head>
+<body>
+<h1>Finn busstur</h1>
+
+<form id="tripForm">
+    <label>
+        Fra:
+        <input type="text" id="fromInput" required>
+    </label>
+    <br>
+    <label>
+        Til:
+        <input type="text" id="toInput" required>
+    </label>
+    <br>
+    <button type="submit">Søk</button>
+</form>
+
+<h2>Resultat</h2>
+<div id="result"></div>
+
+<script>
+    document.getElementById("tripForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const from = document.getElementById("fromInput").value;
+        const to   = document.getElementById("toInput").value;
+        const resultDiv = document.getElementById("result");
+        resultDiv.textContent = "Laster...";
+
+        try {
+            const resp = await fetch(`/api/mock/tripsByName?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+            if (!resp.ok) {
+                const txt = await resp.text();
+                resultDiv.textContent = `Feil: ${resp.status} (${txt})`;
+                return;
+            }
+            const data = await resp.json();
+
+            if (!data.trips || data.trips.length === 0) {
+                resultDiv.textContent = "Fant ingen direkte turer for disse stoppene.";
+                return;
+            }
+
+            let html = "";
+            html += `<p>Fra: <strong>${data.from.name}</strong> (${data.from.id})<br>`;
+            html += `Til: <strong>${data.to.name}</strong> (${data.to.id})</p>`;
+
+            html += "<ul>";
+            for (const t of data.trips) {
+                html += `<li>
+              Linje ${t.line} (${t.direction})<br>
+              Avgang: ${t.departureTime}, Ankomst: ${t.arrivalTime}<br>
+              Varighet: ${t.durationMinutes} min, stopp før destinasjon: ${t.stopsBeforeDest}
+            </li>`;
+            }
+            html += "</ul>";
+
+            resultDiv.innerHTML = html;
+        } catch (err) {
+            console.error(err);
+            resultDiv.textContent = "Noe gikk galt i forespørselen.";
+        }
+    });
+</script>
+</body>
+</html>

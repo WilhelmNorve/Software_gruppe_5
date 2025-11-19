@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="no">
+<head>
+    <meta charset="utf-8" />
+    <title>Direkte avganger – mock rute 630</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root { color-scheme: light dark; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: canvas;
+            color: canvasText;
+        }
+        .page {
+            max-width: 1024px;
+            margin: 0 auto;
+            padding: 1rem 1rem 2rem;
+        }
+
+        /* Header med flagg-knapp til høyre */
+        header {
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: .75rem;
+        }
+        .header-main {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        h1 { margin: 0 0 .25rem; font-size: 1.3rem; }
+        .muted { color: #666; font-size: .9rem; }
+        .muted-small { color: #777; font-size: .8rem; }
+
+        .lang-switch {
+            position: relative;
+            flex: 0 0 auto;
+        }
+        .lang-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            border: 1px solid #ddd;
+            background: canvas;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+        }
+        /* nedtrekk sentrert rett under sirkelen */
+        .lang-menu {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 6px;
+            background: canvas;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            box-shadow: 0 8px 24px rgba(0,0,0,.15);
+            padding: 4px;
+            display: none;
+            z-index: 30;
+        }
+        .lang-menu.open { display: block; }
+        .lang-flag {
+            width: 32px;
+            height: 32px;
+            border-radius: 999px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin: 2px;
+            background: canvas;
+        }
+
+        .layout {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .main-column {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .saved-column {
+            flex: 0 0 auto;
+        }
+
+        @media (min-width: 900px) {
+            .layout {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+            .saved-column {
+                width: 280px;
+                padding-top: 1.8rem; /* ned på linje med Fra/Til */
+                margin-left: 1rem;   /* litt til høyre, i tråd med språk-menyen */
+            }
+        }
+
+        form { display: grid; gap: .75rem; margin-top: 1rem; }
+        .inputs { display: grid; grid-template-columns: 1fr; gap: .75rem; }
+        .field { position: relative; display: grid; gap: .25rem; }
+        label { font-size: .85rem; color: #666; }
+        input[type="text"] {
+            width: 100%;
+            padding: .65rem .8rem;
+            border-radius: 10px;
+            border: 1px solid #bbb;
+            font-size: 1rem;
+            min-width: 0;
+            background: canvas;
+            color: canvasText;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+            align-items: center;
+        }
+        button {
+            padding: .65rem .9rem;
+            border-radius: 999px;
+            border: 0;
+            font-size: .95rem;
+            cursor: pointer;
+            background: #2563eb;
+            color: #fff;
+            white-space: nowrap;
+        }
+        button.secondary {
+            background: transparent;
+            color: #2563eb;
+            border: 1px solid #2563eb;
+        }
+        button.small {
+            padding: .35rem .6rem;
+            font-size: .8rem;
+        }
+        button:disabled { opacity: .6; cursor: default; }
+
+        #msg { min-height: 1.4em; font-size: .9rem; }
+        .ok { color: #2e7d32; }
+        .err { color: #b00020; }
+        .info { color: #555; }
+
+        .panel {
+            border-radius: 16px;
+            border: 1px solid #ddd;
+            padding: 1rem;
+            margin-top: 1rem;
+            background: color-mix(in oklab, canvas 90%, canvasText 2%);
+            overflow: hidden;
+        }
+        .panel h2, .panel h3 { margin-top: 0; font-size: 1.05rem; }
+        .grid { display: grid; gap: .5rem; }
+
+        .dep-row {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: .5rem;
+            align-items: center;
+            padding: .7rem .8rem;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            background: canvas;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .dep-row:hover {
+            outline: 2px solid color-mix(in oklab, canvasText 15%, transparent);
+        }
+        .dep-row.cancelled {
+            opacity: .7;
+            border-style: dashed;
+        }
+
+        .code { font-weight: 600; font-size: .95rem; }
+        .time { font-variant-numeric: tabular-nums; text-align: right; font-size: .9rem; }
+        .time span { display: block; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 999px;
+            font-size: .75rem;
+            margin-top: 2px;
+            white-space: nowrap;
+        }
+        .status-on-time { background: #e8f5e9; color: #1b5e20; }
+        .status-delayed { background: #fff3e0; color: #e65100; }
+        .status-cancelled { background: #ffebee; color: #b71c1c; }
+
+        @media (min-width: 640px) {
+            .inputs { grid-template-columns: 1fr 1fr; }
+        }
+
+        /* AUTOCOMPLETE */
+        .ac {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 100%;
+            margin-top: 4px;
+            background: canvas;
+            border-radius: 10px;
+            border: 1px solid #bbb;
+            box-shadow: 0 8px 24px rgba(0,0,0,.12);
+            z-index: 20;
+        }
+        .ac[hidden] { display: none; }
+        .ac ul {
+            list-style: none;
+            margin: 0;
+            padding: 4px;
+            max-height: 260px;
+            overflow: auto;
+        }
+        .ac li {
+            padding: .55rem .6rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .ac li[aria-selected="true"],
+        .ac li:hover {
+            background: color-mix(in oklab, canvasText 12%, canvas);
+        }
+        .ac .title { font-weight: 600; font-size: .95rem; }
+        .ac .sub { font-size: .8rem; opacity: .7; }
+
+        /* Lagrede ruter – kompakte kort med knapp under */
+        .saved-card {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: .35rem;
+            padding: .6rem .7rem .55rem;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            background: canvas;
+            overflow: hidden;
+        }
+        .saved-title {
+            font-size: .9rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .saved-meta {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            font-size: .8rem;
+        }
+        .saved-time {
+            font-variant-numeric: tabular-nums;
+        }
+        .saved-actions {
+            margin-top: .25rem;
+            display: flex;
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <header>
+        <div class="header-main">
+            <h1>Direkte avganger – mock rute 630</h1>
+            <p class="muted">
+                Skriv inn <b>fra</b>- og <b>til</b>-stopp. Du får forslag mens du skriver
+                (f.eks. «halden», «fredrikstad», «moss»). Stavefeil som «hælden» tolkes automatisk.
+                Helt uforståelige navn gir en forklarende beskjed slik som i konsoll-appen.
+            </p>
+        </div>
+        <div class="lang-switch">
+            <button type="button" class="lang-btn" id="langBtn" title="Språk">
+                🇳🇴
+            </button>
+            <div class="lang-menu" id="langMenu" aria-label="Språkvalg">
+                <div class="lang-flag" title="Norsk">🇳🇴</div>
+                <div class="lang-flag" title="Engelsk">🇬🇧</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <!-- VENSTRE KOLONNE: søk + avganger -->
+        <div class="main-column">
+            <form id="form" autocomplete="off">
+                <div class="inputs">
+                    <div class="field">
+                        <label for="fromInput">Fra</label>
+                        <input id="fromInput" type="text" placeholder="Startstopp" inputmode="search"
+                               aria-autocomplete="list" aria-haspopup="listbox" />
+                        <div id="acFrom" class="ac" role="listbox" hidden></div>
+                    </div>
+                    <div class="field">
+                        <label for="toInput">Til</label>
+                        <input id="toInput" type="text" placeholder="Sluttstopp" inputmode="search"
+                               aria-autocomplete="list" aria-haspopup="listbox" />
+                        <div id="acTo" class="ac" role="listbox" hidden></div>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button type="button" class="secondary" id="useLocationBtn">Min posisjon som fra-stopp</button>
+                    <button type="submit">Hent direkte avganger</button>
+                    <button type="button" class="secondary" id="showSavedBtn" style="margin-left:auto;">
+                        Lagrede ruter
+                    </button>
+                </div>
+                <div id="msg" class="info" aria-live="polite"></div>
+            </form>
+
+            <section id="result" class="panel" hidden>
+                <h2 id="stopTitle"></h2>
+                <div id="list" class="grid"></div>
+            </section>
+        </div>
+
+        <!-- HØYRE KOLONNE: lagrede ruter -->
+        <aside class="saved-column">
+            <section id="savedPanel" class="panel" hidden>
+                <h2>Lagrede ruter</h2>
+                <div id="savedList" class="grid"></div>
+            </section>
+        </aside>
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById('form');
+    const fromInput = document.getElementById('fromInput');
+    const toInput = document.getElementById('toInput');
+    const acFrom = document.getElementById('acFrom');
+    const acTo = document.getElementById('acTo');
+    const msg = document.getElementById('msg');
+    const result = document.getElementById('result');
+    const stopTitle = document.getElementById('stopTitle');
+    const list = document.getElementById('list');
+    const useLocationBtn = document.getElementById('useLocationBtn');
+    the_showSavedBtn = document.getElementById('showSavedBtn');
+    const savedPanel = document.getElementById('savedPanel');
+    const savedList = document.getElementById('savedList');
+    const langBtn = document.getElementById('langBtn');
+    const langMenu = document.getElementById('langMenu');
+
+    let currentTrips = [];
+    let currentFromStop = null;
+    let currentToStop = null;
+
+    const STORAGE_KEY = 'mock630_saved_routes';
+    let savedRoutes = [];
+
+    fromInput.dataset.stopId = '';
+    toInput.dataset.stopId = '';
+
+    loadSavedRoutes();
+    renderSavedRoutes();
+
+    attachAutocomplete(fromInput, acFrom, pickFrom, "START-stopp");
+    attachAutocomplete(toInput, acTo, pickTo, "DESTINASJON-stopp");
+
+    function pickFrom(item){
+        fromInput.value = item.name;
+        fromInput.dataset.stopId = item.id;
+    }
+    function pickTo(item){
+        toInput.value = item.name;
+        toInput.dataset.stopId = item.id;
+    }
+
+    form.addEventListener('submit', onSubmit);
+
+    the_showSavedBtn.addEventListener('click', () => {
+        savedPanel.hidden = !savedPanel.hidden;
+    });
+
+    // Språk-ikon: bare vis/skjul menyen – ingen språkbytte
+    langBtn.addEventListener('click', () => {
+        langMenu.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+        if (!langMenu.contains(e.target) && e.target !== langBtn) {
+            langMenu.classList.remove('open');
+        }
+    });
+
+    // --------- "Din posisjon" knapp (geo) ---------
+    useLocationBtn.addEventListener('click', async () => {
+        msg.className = 'info';
+        msg.textContent = 'Henter posisjon …';
+
+        if (!('geolocation' in navigator)) {
+            msg.className = 'err';
+            msg.textContent = 'Geolokasjon støttes ikke i denne nettleseren.';
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+
+            try {
+                const url = `/api/mock/nearestStop?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
+                const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!resp.ok) {
+                    const txt = await resp.text().catch(()=> '');
+                    msg.className = 'err';
+                    msg.textContent = `Fant ikke nærmeste stopp (${resp.status}${txt ? ' – ' + txt : ''})`;
+                    return;
+                }
+
+                const data = await resp.json();
+                if (!data || !data.id || !data.name) {
+                    msg.className = 'err';
+                    msg.textContent = 'Svar fra server manglet id/navn på nærmeste stopp.';
+                    return;
+                }
+
+                fromInput.value = data.name;
+                fromInput.dataset.stopId = data.id;
+
+                msg.className = 'ok';
+                msg.textContent = `Fant nærmeste stopp: ${data.name}`;
+            } catch (err) {
+                console.error(err);
+                msg.className = 'err';
+                msg.textContent = 'Kunne ikke hente nærmeste stopp.';
+            }
+        }, (err) => {
+            console.warn('Geolocation error', err);
+            msg.className = 'err';
+            if (err.code === err.PERMISSION_DENIED) {
+                msg.textContent = 'Tillat bruk av posisjon for å bruke denne funksjonen.';
+            } else {
+                msg.textContent = 'Klarte ikke å hente posisjon.';
+            }
+        }, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 30000
+        });
+    });
+
+    // -------- Hent avganger mellom valgt fra/til ----------
+    async function onSubmit(e){
+        e.preventDefault();
+        msg.className = 'info';
+        result.hidden = true;
+        list.innerHTML = '';
+
+        const fromId = (fromInput.dataset.stopId || '').trim();
+        const toId   = (toInput.dataset.stopId || '').trim();
+
+        if(!fromId || !toId){
+            msg.className = 'err';
+            msg.textContent = 'Velg både fra- og til-stopp fra forslagene (eller bruk posisjon for fra-stopp).';
+            return;
+        }
+
+        try {
+            msg.textContent = 'Henter avganger mellom stoppene …';
+
+            const url = `/api/mock/trips?fromId=${encodeURIComponent(fromId)}&toId=${encodeURIComponent(toId)}`;
+            const resp = await fetch(url, {
+                method:'GET',
+                headers:{ 'Accept':'application/json' }
+            });
+
+            if (!resp.ok) {
+                const txt = await resp.text().catch(()=> '');
+                msg.className = 'err';
+                msg.textContent = `Feil fra server: ${resp.status}${txt ? ' ('+txt+')' : ''}`;
+                return;
+            }
+
+            const data = await resp.json();
+            const usedFrom = data.from || {};
+            const usedTo   = data.to   || {};
+            const trips    = Array.isArray(data.trips) ? data.trips : [];
+
+            currentTrips = trips;
+            currentFromStop = usedFrom;
+            currentToStop = usedTo;
+
+            if (trips.length === 0) {
+                msg.className = 'info';
+                msg.textContent = 'Fant ingen direkte turer mellom disse stoppene i mock-rutetabellen.';
+                result.hidden = false;
+                stopTitle.textContent = `${usedFrom.name || fromInput.value} → ${usedTo.name || toInput.value}`;
+                return;
+            }
+
+            list.innerHTML = '';
+            trips.forEach((t, idx) => {
+                const row = document.createElement('div');
+
+                const delay = typeof t.delayMinutes === 'number' ? t.delayMinutes : 0;
+                const isCancelled = delay === 30;
+
+                const plannedDep = t.departureTime || '—';
+                const plannedArr = t.arrivalTime || '—';
+                const newDep = t.newDeparture || plannedDep;
+                const newArr = t.newArrival || plannedArr;
+
+                let statusText, statusClass;
+                if (delay === 0) {
+                    statusText = 'I rute';
+                    statusClass = 'status-on-time';
+                } else if (isCancelled) {
+                    statusText = 'KANSELLERT (30 min forsinkelse)';
+                    statusClass = 'status-cancelled';
+                } else {
+                    statusText = `Forsinket +${delay} min`;
+                    statusClass = 'status-delayed';
+                }
+
+                row.className = 'dep-row' + (isCancelled ? ' cancelled' : '');
+
+                const line = t.line || '';
+                const dir  = t.direction || '';
+                const dur  = (t.durationMinutes != null ? `${t.durationMinutes} min` : 'ukjent tid');
+                const stopsBefore = (t.stopsBeforeDest != null ? `${t.stopsBeforeDest} stopp før dest.` : '');
+
+                const timeHtml = (delay > 0 && !isCancelled)
+                    ? `<span>${escapeHtml(newDep)}</span>
+                       <span class="muted-small">→ ${escapeHtml(newArr)}</span>
+                       <span class="muted-small">Planlagt ${escapeHtml(plannedDep)} → ${escapeHtml(plannedArr)}</span>
+                       <span class="muted-small">${escapeHtml(dur)}</span>`
+                    : `<span>${escapeHtml(newDep)}</span>
+                       <span class="muted-small">→ ${escapeHtml(newArr)}</span>
+                       <span class="muted-small">${escapeHtml(dur)}</span>`;
+
+                row.innerHTML = `
+          <div class="code">${escapeHtml(line)}</div>
+          <div>
+            <div><strong>${idx + 1}.</strong> mot ${escapeHtml(dir)}</div>
+            <div class="muted-small">${escapeHtml(stopsBefore)}</div>
+            <div class="status-badge ${statusClass}">${escapeHtml(statusText)}</div>
+          </div>
+          <div class="time">
+            ${timeHtml}
+          </div>
+        `;
+
+                row.addEventListener('click', () => {
+                    showTripDetails(idx);
+                });
+
+                list.appendChild(row);
+            });
+
+            stopTitle.textContent = `${usedFrom.name || fromInput.value} → ${usedTo.name || toInput.value} (${trips.length} avganger i mock-data)`;
+            result.hidden = false;
+            msg.textContent = '';
+
+        } catch (err) {
+            console.error(err);
+            msg.className = 'err';
+            msg.textContent = 'Kunne ikke hente avganger (nettverksfeil).';
+        }
+    }
+
+    function findAlternativeOnTimeTrip(trips, chosenIndex) {
+        if (!Array.isArray(trips) || trips.length === 0) return null;
+
+        let bestIndex = -1;
+        let bestDistance = Infinity;
+
+        for (let i = 0; i < trips.length; i++) {
+            if (i === chosenIndex) continue;
+            const t = trips[i];
+            const delay = typeof t.delayMinutes === 'number' ? t.delayMinutes : 0;
+            if (delay !== 0) continue;
+
+            const distance = Math.abs(i - chosenIndex);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                bestIndex = i;
+            } else if (distance === bestDistance) {
+                if (bestIndex < chosenIndex && i > chosenIndex) {
+                    bestIndex = i;
+                }
+            }
+        }
+
+        return bestIndex >= 0 ? bestIndex : null;
+    }
+
+    function makeRouteKey(trip, fromStop, toStop) {
+        const sj = trip.serviceJourneyId || '';
+        the_dep = trip.departureTime || '';
+        const fromId = fromStop && fromStop.id || '';
+        const toId = toStop && toStop.id || '';
+        return `${sj}__${fromId}__${toId}__${the_dep}`;
+    }
+
+    function findSavedIndexByKey(key) {
+        return savedRoutes.findIndex(r => r.key === key);
+    }
+
+    function showTripDetails(index) {
+        if (!currentTrips || !currentTrips[index]) return;
+
+        const t = currentTrips[index];
+        const fromStop = currentFromStop || {};
+        const toStop   = currentToStop || {};
+
+        const fromName = fromStop.name || '';
+        const toName   = toStop.name   || '';
+        const fromId   = fromStop.id   || '';
+        const toId     = toStop.id     || '';
+
+        const plannedDep = t.departureTime || '—';
+        const plannedArr = t.arrivalTime || '—';
+        const newDep = t.newDeparture || plannedDep;
+        const newArr = t.newArrival || plannedArr;
+        const dur  = (t.durationMinutes != null ? `${t.durationMinutes} min` : 'ukjent');
+        const stopsBefore = (t.stopsBeforeDest != null ? t.stopsBeforeDest : 'ukjent');
+        const delay = typeof t.delayMinutes === 'number' ? t.delayMinutes : 0;
+        const isCancelled = delay === 30;
+
+        let statusText;
+        if (delay === 0) {
+            statusText = 'I rute';
+        } else if (isCancelled) {
+            statusText = 'KANSELLERT (30 min forsinkelse)';
+        } else {
+            statusText = `Forsinket +${delay} min`;
+        }
+
+        const panelId = 'trip-details-panel';
+        let panel = document.getElementById(panelId);
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = panelId;
+            panel.className = 'panel';
+            panel.style.marginTop = '1rem';
+            result.insertAdjacentElement('afterend', panel);
+        }
+
+        if (isCancelled) {
+            const altIndex = findAlternativeOnTimeTrip(currentTrips, index);
+            if (altIndex != null) {
+                const alt = currentTrips[altIndex];
+                const altDelay = typeof alt.delayMinutes === 'number' ? alt.delayMinutes : 0;
+                const altPlannedDep = alt.departureTime || '—';
+                const altPlannedArr = alt.arrivalTime || '—';
+                const altNewDep = alt.newDeparture || altPlannedDep;
+                const altNewArr = alt.newArrival || altPlannedArr;
+                const altDur  = (alt.durationMinutes != null ? `${alt.durationMinutes} min` : 'ukjent');
+                const altStopsBefore = (alt.stopsBeforeDest != null ? alt.stopsBeforeDest : 'ukjent');
+
+                panel.innerHTML = `
+          <h3>Valgt avgang er kansellert</h3>
+
+          <p><strong>Valgt avgang:</strong> KANSELLERT (30 min forsinkelse)</p>
+          <table style="width:100%; border-collapse:collapse; font-size:.9rem; margin-bottom:.75rem;">
+            <tr>
+              <th style="text-align:left; padding:2px 0;">Planlagt</th>
+              <th style="text-align:left; padding:2px 0;">Ny tid</th>
+              <th style="text-align:left; padding:2px 0;">Forsinkelse</th>
+            </tr>
+            <tr>
+              <td style="padding:2px 0;">Avgang: ${escapeHtml(plannedDep)}<br/>Ankomst: ${escapeHtml(plannedArr)}</td>
+              <td style="padding:2px 0;">— (kansellert)</td>
+              <td style="padding:2px 0;">30 min</td>
+            </tr>
+          </table>
+
+          <hr style="margin: .75rem 0; border:none; border-top:1px solid #ccc;" />
+
+          <h3>Anbefalt alternativ (i rute)</h3>
+          <p><strong>Status:</strong> I rute</p>
+          <table style="width:100%; border-collapse:collapse; font-size:.9rem; margin-bottom:.75rem;">
+            <tr>
+              <th style="text-align:left; padding:2px 0;">Planlagt</th>
+              <th style="text-align:left; padding:2px 0;">Ny tid</th>
+              <th style="text-align:left; padding:2px 0;">Forsinkelse</th>
+            </tr>
+            <tr>
+              <td style="padding:2px 0;">Avgang: ${escapeHtml(altPlannedDep)}<br/>Ankomst: ${escapeHtml(altPlannedArr)}</td>
+              <td style="padding:2px 0;">Avgang: ${escapeHtml(altNewDep)}<br/>Ankomst: ${escapeHtml(altNewArr)}</td>
+              <td style="padding:2px 0;">${altDelay === 0 ? '0 min' : (altDelay + ' min')}</td>
+            </tr>
+          </table>
+
+          <p><strong>Linje:</strong> ${escapeHtml(alt.line || '')} mot ${escapeHtml(alt.direction || '')}</p>
+          <p><strong>Påstigning:</strong> ${escapeHtml(fromName)} (${escapeHtml(fromId)})</p>
+          <p><strong>Avstigning:</strong> ${escapeHtml(toName)} (${escapeHtml(toId)})</p>
+          <p><strong>Antall stopp før destinasjon:</strong> ${escapeHtml(String(altStopsBefore))}</p>
+          <p><strong>Estimert reisetid:</strong> ${escapeHtml(altDur)}</p>
+
+          <button type="button" id="saveRouteBtn" class="secondary small" style="margin-top:.5rem;">
+            Lagre anbefalt avgang
+          </button>
+
+          <p class="muted-small" style="margin-top:.5rem;">Du kan også velge en annen avgang fra listen over.</p>
+        `;
+
+                setupSaveButton(alt, fromStop, toStop, 'Lagre anbefalt avgang');
+            } else {
+                panel.innerHTML = `
+          <h3>Valgt avgang er kansellert</h3>
+          <p><strong>Status:</strong> KANSELLERT (30 min forsinkelse)</p>
+          <p>Vi fant ingen annen avgang som er i rute. Gå tilbake til listen og velg en annen avgang.</p>
+        `;
+            }
+
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+
+        panel.innerHTML = `
+      <h3>Detaljer for valgt avgang</h3>
+
+      <p><strong>Status:</strong> ${escapeHtml(statusText)}</p>
+
+      <table style="width:100%; border-collapse:collapse; font-size:.9rem; margin-bottom:.75rem;">
+        <tr>
+          <th style="text-align:left; padding:2px 0;">Planlagt</th>
+          <th style="text-align:left; padding:2px 0;">Ny tid</th>
+          <th style="text-align:left; padding:2px 0;">Forsinkelse</th>
+        </tr>
+        <tr>
+          <td style="padding:2px 0;">Avgang: ${escapeHtml(plannedDep)}<br/>Ankomst: ${escapeHtml(plannedArr)}</td>
+          <td style="padding:2px 0;">Avgang: ${escapeHtml(newDep)}<br/>Ankomst: ${escapeHtml(newArr)}</td>
+          <td style="padding:2px 0;">${delay === 0 ? '0 min' : (delay + ' min')}</td>
+        </tr>
+      </table>
+
+      <p><strong>Linje:</strong> ${escapeHtml(t.line || '')} mot ${escapeHtml(t.direction || '')}</p>
+      <p><strong>Påstigning:</strong> ${escapeHtml(fromName)} (${escapeHtml(fromId)})</p>
+      <p><strong>Avstigning:</strong> ${escapeHtml(toName)} (${escapeHtml(toId)})</p>
+      <p><strong>Antall stopp før destinasjon:</strong> ${escapeHtml(String(stopsBefore))}</p>
+      <p><strong>Estimert reisetid:</strong> ${escapeHtml(dur)}</p>
+
+      <button type="button" id="saveRouteBtn" class="secondary small" style="margin-top:.5rem;">
+        Lagre denne ruten
+      </button>
+    `;
+
+        setupSaveButton(t, fromStop, toStop, 'Lagre denne ruten');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function setupSaveButton(trip, fromStop, toStop, baseLabel) {
+        const btn = document.getElementById('saveRouteBtn');
+        if (!btn) return;
+        const key = makeRouteKey(trip, fromStop, toStop);
+
+        function refreshLabel() {
+            const idx = findSavedIndexByKey(key);
+            btn.textContent = idx === -1 ? baseLabel : 'Fjern fra lagrede';
+        }
+
+        btn.onclick = () => {
+            const idx = findSavedIndexByKey(key);
+            if (idx === -1) {
+                const route = {
+                    key,
+                    fromName: fromStop.name || '',
+                    fromId: fromStop.id || '',
+                    toName: toStop.name || '',
+                    toId: toStop.id || '',
+                    line: trip.line || '',
+                    direction: trip.direction || '',
+                    plannedDep: trip.departureTime || '',
+                    plannedArr: trip.arrivalTime || '',
+                    newDep: trip.newDeparture || trip.departureTime || '',
+                    newArr: trip.newArrival || trip.arrivalTime || '',
+                    delayMinutes: typeof trip.delayMinutes === 'number' ? trip.delayMinutes : 0,
+                    durationMinutes: trip.durationMinutes != null ? trip.durationMinutes : null,
+                    createdAt: new Date().toISOString()
+                };
+                savedRoutes.push(route);
+            } else {
+                savedRoutes.splice(idx, 1);
+            }
+            saveSavedRoutes();
+            renderSavedRoutes();
+            refreshLabel();
+        };
+
+        refreshLabel();
+    }
+
+    function loadSavedRoutes() {
+        try {
+            const s = localStorage.getItem(STORAGE_KEY);
+            savedRoutes = s ? JSON.parse(s) : [];
+        } catch (e) {
+            console.warn('Kunne ikke lese lagrede ruter fra localStorage', e);
+            savedRoutes = [];
+        }
+    }
+
+    function saveSavedRoutes() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes));
+        } catch (e) {
+            console.warn('Kunne ikke lagre ruter til localStorage', e);
+        }
+    }
+
+    // *** Lagrede ruter – navn, tid og status + fjern-knapp under ***
+    function renderSavedRoutes() {
+        savedList.innerHTML = '';
+        if (!savedRoutes.length) {
+            savedList.innerHTML = '<p class="muted">Du har ingen lagrede ruter ennå. Velg en rute og trykk «Lagre denne ruten».</p>';
+            return;
+        }
+
+        savedRoutes
+            .slice()
+            .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
+            .forEach(route => {
+                const card = document.createElement('div');
+                card.className = 'saved-card';
+
+                const delay = typeof route.delayMinutes === 'number' ? route.delayMinutes : 0;
+                let statusText, statusClass;
+                if (delay === 0) {
+                    statusText = 'I rute';
+                    statusClass = 'status-on-time';
+                } else if (delay === 30) {
+                    statusText = 'Kansellert';
+                    statusClass = 'status-cancelled';
+                } else {
+                    statusText = `Forsinket +${delay} min`;
+                    statusClass = 'status-delayed';
+                }
+
+                const title = document.createElement('div');
+                title.className = 'saved-title';
+                title.textContent = `${route.fromName || 'Ukjent'} → ${route.toName || 'Ukjent'}`;
+
+                const meta = document.createElement('div');
+                meta.className = 'saved-meta';
+                const time = document.createElement('span');
+                time.className = 'saved-time';
+                time.textContent = route.newDep || route.plannedDep || '';
+                const badge = document.createElement('span');
+                badge.className = `status-badge ${statusClass}`;
+                badge.textContent = statusText;
+                meta.appendChild(time);
+                meta.appendChild(badge);
+
+                const actions = document.createElement('div');
+                actions.className = 'saved-actions';
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'secondary small';
+                removeBtn.textContent = 'Fjern';
+                removeBtn.addEventListener('click', () => {
+                    const idx = savedRoutes.findIndex(r => r.key === route.key);
+                    if (idx !== -1) {
+                        savedRoutes.splice(idx, 1);
+                        saveSavedRoutes();
+                        renderSavedRoutes();
+                    }
+                });
+                actions.appendChild(removeBtn);
+
+                card.appendChild(title);
+                card.appendChild(meta);
+                card.appendChild(actions);
+                savedList.appendChild(card);
+            });
+    }
+
+    function attachAutocomplete(inputEl, panelEl, onPick, roleLabel){
+        let items = [];
+        let highlighted = -1;
+        const debounced = debounce(handleInput, 200);
+
+        inputEl.addEventListener('input', () => {
+            inputEl.dataset.stopId = '';
+            debounced();
+        });
+
+        inputEl.addEventListener('focus', () => {
+            if (panelEl.children.length) panelEl.hidden = false;
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!panelEl.contains(e.target) && e.target !== inputEl) panelEl.hidden = true;
+        });
+
+        inputEl.addEventListener('keydown', (e) => {
+            const max = items.length - 1;
+            if (panelEl.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) panelEl.hidden = false;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                highlighted = Math.min(max, highlighted + 1);
+                updateHighlight();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                highlighted = Math.max(0, highlighted - 1);
+                updateHighlight();
+            } else if (e.key === 'Enter') {
+                if (!panelEl.hidden && highlighted >= 0) {
+                    e.preventDefault();
+                    pick(items[highlighted]);
+                }
+            } else if (e.key === 'Escape') {
+                panelEl.hidden = true;
+            }
+        });
+
+        async function handleInput(){
+            const q = (inputEl.value || '').trim();
+            if (!q || q.length < 2) {
+                panelEl.hidden = true;
+                panelEl.innerHTML = '';
+                items = [];
+                return;
+            }
+            try {
+                const url = `/api/mock/stops?q=${encodeURIComponent(q)}`;
+                const r = await fetch(url, {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (r.status === 404) {
+                    msg.className = 'info';
+                    msg.textContent =
+                        `Jeg forsto ikke hvor du mente som ${roleLabel}. ` +
+                        `Rute 630 går mellom Halden, Fredrikstad-området og Moss. ` +
+                        `Prøv for eksempel å søke på «Halden», «Fredrikstad», «Moss» ` +
+                        `eller et konkret holdeplasnavn langs denne strekningen.`;
+                    panelEl.hidden = true;
+                    panelEl.innerHTML = '';
+                    items = [];
+                    return;
+                }
+
+                if (!r.ok) {
+                    throw new Error(await r.text().catch(()=>`Feil ${r.status}`));
+                }
+
+                const data = await r.json();
+                items = normalizeStops(data);
+                render(items);
+            } catch (err){
+                console.error('Stops search failed', err);
+                items = [];
+                panelEl.hidden = true;
+                panelEl.innerHTML = '';
+            }
+        }
+
+        function render(list){
+            if (!Array.isArray(list) || list.length === 0) {
+                panelEl.hidden = true;
+                panelEl.innerHTML = '';
+                return;
+            }
+            highlighted = -1;
+            panelEl.hidden = false;
+            const ul = document.createElement('ul');
+            list.forEach((it, i) => {
+                const li = document.createElement('li');
+                li.role = 'option';
+                li.id = `${inputEl.id}-opt-${i}`;
+                li.innerHTML = `
+          <div class="title">${escapeHtml(it.name)}</div>
+          <div class="sub">${escapeHtml(it.id)}</div>
+        `;
+                li.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    pick(it);
+                });
+                ul.appendChild(li);
+            });
+            panelEl.innerHTML = '';
+            panelEl.appendChild(ul);
+            inputEl.setAttribute('aria-expanded', 'true');
+        }
+
+        function updateHighlight(){
+            const lis = panelEl.querySelectorAll('li');
+            lis.forEach((li, idx) =>
+                li.setAttribute('aria-selected', String(idx === highlighted))
+            );
+            if (highlighted >= 0 && lis[highlighted]) {
+                lis[highlighted].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function pick(item){
+            onPick(item);
+            panelEl.hidden = true;
+            inputEl.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function normalizeStops(raw){
+        if (!Array.isArray(raw)) return [];
+        return raw
+            .map(x => ({
+                id: x.id || '',
+                name: x.name || ''
+            }))
+            .filter(x => x.id && x.name);
+    }
+
+    function debounce(fn, ms){ let t; return (...a) => { clearTimeout(t); t = setTimeout(()=>fn(...a), ms); }; }
+    function escapeHtml(s){
+        return String(s)
+            .replaceAll('&','&amp;')
+            .replaceAll('<','&lt;')
+            .replaceAll('>','&gt;')
+            .replaceAll('"','&quot;')
+            .replaceAll("'",'&#39;');
+    }
+</script>
+</body>
+</html>
+

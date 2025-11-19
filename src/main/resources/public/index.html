@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="no">
+<head>
+    <meta charset="utf-8" />
+    <title>Innlogging</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root { color-scheme: light dark; }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: color-mix(in oklab, canvas 92%, canvasText 4%);
+        }
+
+        .page {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .card {
+            background: canvas;
+            border-radius: 16px;
+            padding: 1.5rem 1.25rem 1.25rem;
+            box-shadow: 0 18px 45px rgba(0,0,0,.20);
+            border: 1px solid color-mix(in oklab, canvasText 10%, transparent);
+        }
+
+        h1 {
+            margin: 0 0 .75rem;
+            font-size: 1.35rem;
+        }
+
+        form {
+            margin-top: .5rem;
+            display: grid;
+            gap: 0.9rem;
+        }
+
+        label {
+            display: grid;
+            gap: 0.35rem;
+            font-size: .9rem;
+        }
+
+        input {
+            padding: 0.65rem 0.8rem;
+            border: 1px solid #bbb;
+            border-radius: 10px;
+            font-size: 1rem;
+            width: 100%;
+            background: color-mix(in oklab, canvas 98%, canvasText 1%);
+            transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px color-mix(in oklab, #2563eb 30%, transparent);
+            background: canvas;
+        }
+
+        button {
+            padding: 0.75rem 0.9rem;
+            border-radius: 999px;
+            border: 0;
+            cursor: pointer;
+            font-size: .95rem;
+            font-weight: 600;
+            background: #2563eb;
+            color: #fff;
+            width: 100%;
+            transition:
+                    background-color 150ms ease,
+                    box-shadow 150ms ease,
+                    transform 120ms ease;
+        }
+
+        button:hover:not([disabled]) {
+            background: #1d4ed8;
+            box-shadow: 0 8px 18px rgba(37,99,235,.4);
+            transform: translateY(-1px);
+        }
+
+        button:active:not([disabled]) {
+            transform: translateY(0);
+            box-shadow: 0 4px 10px rgba(15,23,42,.45);
+        }
+
+        button[disabled] {
+            opacity: 0.65;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        #msg {
+            margin-top: 0.5rem;
+            min-height: 1.2em;
+            font-size: .9rem;
+        }
+
+        .ok   { color: #2e7d32; }
+        .err  { color: #b00020; }
+        .info { color: #555; }
+
+        .help {
+            margin-top: 0.25rem;
+            font-size: .85rem;
+            color: #666;
+        }
+
+        @media (min-width: 600px) {
+            body {
+                padding: 2rem;
+            }
+
+            .card {
+                padding: 2rem 2rem 1.8rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <div class="card">
+        <h1>Logg inn</h1>
+
+        <!-- AJAX-innlogging via application/x-www-form-urlencoded -->
+        <form id="loginForm" method="post" action="/login" autocomplete="on" novalidate>
+            <label for="username">
+                Brukernavn
+                <input id="username" name="username" required autocomplete="username" />
+            </label>
+
+            <label for="password">
+                Passord
+                <input id="password" name="password" type="password" required autocomplete="current-password" />
+            </label>
+
+            <button type="submit">Logg inn</button>
+            <p id="msg" class="info" aria-live="polite"></p>
+            <p class="help">Ved vellykket innlogging sendes du videre til avganger.</p>
+        </form>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const form = document.getElementById("loginForm");
+        const msg  = document.getElementById("msg");
+        const btn  = form.querySelector("button[type=submit]");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            msg.className = "info";
+            msg.textContent = "Logger inn…";
+            btn.disabled = true;
+
+            try {
+                const fd = new FormData(form);
+                // Trim for å unngå utilsiktede mellomrom
+                fd.set("username", (fd.get("username") || "").toString().trim());
+                fd.set("password", (fd.get("password") || "").toString().trim());
+
+                // Send som application/x-www-form-urlencoded (IKKE multipart)
+                const body = new URLSearchParams(fd);
+
+                const resp = await fetch(form.action, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    credentials: "include",           // send/lagre session-cookie
+                    redirect: "follow",
+                    body
+                });
+
+                if (resp.ok) {
+                    // Cookie skal nå være satt; gå videre til avganger-siden
+                    location.href = "departures2.html";
+                    return;
+                }
+
+                if (resp.status === 401) {
+                    msg.className = "err";
+                    msg.textContent = "Feil brukernavn eller passord ❌";
+                } else {
+                    let t = "";
+                    try { t = await resp.text(); } catch {}
+                    msg.className = "err";
+                    msg.textContent = t ? t : "Serverfeil. Prøv igjen senere.";
+                }
+            } catch (err) {
+                msg.className = "err";
+                msg.textContent = "Kunne ikke kontakte serveren.";
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    })();
+</script>
+</body>
+</html>
+
+
+

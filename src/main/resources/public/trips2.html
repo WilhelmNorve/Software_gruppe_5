@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <title>Finn busstur</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        h1 { margin-bottom: 1rem; }
+        .panel { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ccc; border-radius: 4px; }
+        .panel h2 { margin-top: 0; }
+        .result-list button {
+            display: block;
+            margin: 0.25rem 0;
+            padding: 0.25rem 0.5rem;
+        }
+        .chosen { font-weight: bold; margin-top: 0.5rem; }
+        .trip { margin: 0.5rem 0; }
+        .error { color: darkred; }
+    </style>
+</head>
+<body>
+<h1>Finn busstur (som i Main5)</h1>
+
+<!-- 1: Velg START-stopp -->
+<div class="panel">
+    <h2>1. Velg START-stopp</h2>
+    <label>
+        Søk etter start-stopp (navn):
+        <input type="text" id="startSearch">
+    </label>
+    <button id="startSearchBtn">Søk start</button>
+    <div id="startError" class="error"></div>
+    <div id="startResults" class="result-list"></div>
+    <div id="startChosen" class="chosen"></div>
+</div>
+
+<!-- 2: Velg DESTINASJON-stopp -->
+<div class="panel">
+    <h2>2. Velg DESTINASJON-stopp</h2>
+    <label>
+        Søk etter destinasjon-stopp (navn):
+        <input type="text" id="destSearch">
+    </label>
+    <button id="destSearchBtn">Søk destinasjon</button>
+    <div id="destError" class="error"></div>
+    <div id="destResults" class="result-list"></div>
+    <div id="destChosen" class="chosen"></div>
+</div>
+
+<!-- 3: Vis avganger -->
+<div class="panel">
+    <h2>3. Avganger denne dagen</h2>
+    <button id="loadTripsBtn" disabled>Vis avganger mellom valgt START og DESTINASJON</button>
+    <div id="tripsError" class="error"></div>
+    <div id="tripsResult"></div>
+</div>
+
+<script>
+    let chosenFromId = null;
+    let chosenFromName = null;
+    let chosenToId = null;
+    let chosenToName = null;
+
+    function updateTripsButtonState() {
+        const btn = document.getElementById("loadTripsBtn");
+        btn.disabled = !(chosenFromId && chosenToId);
+    }
+
+    async function searchStops(term, targetResultsId, targetErrorId, isStart) {
+        const resultsDiv = document.getElementById(targetResultsId);
+        const errorDiv = document.getElementById(targetErrorId);
+        resultsDiv.innerHTML = "";
+        errorDiv.textContent = "";
+
+        if (!term.trim()) {
+            errorDiv.textContent = "Du må skrive et navn.";
+            return;
+        }
+
+        try {
+            const resp = await fetch(`/api/mock/stops?q=${encodeURIComponent(term)}`);
+            if (!resp.ok) {
+                const txt = await resp.text();
+                errorDiv.textContent = `Feil fra server: ${resp.status} (${txt})`;
+                return;
+            }
+            const stops = await resp.json();
+            if (stops.length === 0) {
+                errorDiv.textContent = "Fant ingen stopp som matcher søket.";
+                return;
+            }
+
+            // Vis alle kandidater som knapper (som menyen i Main5)
+            stops.forEach((s, idx) => {
+                const btn = document.createElement("button");
+                btn.textContent = `${idx + 1}) ${s.name} (${s.id})`;
+                btn.addEventListener("click", () => {
+                    if (isStart) {
+                        chosenFromId = s.id;
+                        chosenFromName = s.name;
+                        document.getElementById("startChosen").textContent =
+                            `Valgt START-stopp: ${s.name} (${s.id})`;
+                    } else {
+                        chosenToId = s.id;
+                        chosenToName = s.name;
+                        document.getElementById("destChosen").textContent =
+                            `Valgt DESTINASJON-stopp: ${s.name} (${s.id})`;
+                    }
+                    updateTripsButtonState();
+                });
+                resultsDiv.appendChild(btn);
+            });
+
+        } catch (err) {
+            console.error(err);
+            errorDiv.textContent = "Klarte ikke å kontakte serveren.";
+        }
+    }
+
+    document.getElementById("startSearchBtn").addEventListener("click", () => {
+        const term = document.getElementById("startSearch").value;
+        searchStops(term, "startResults", "startError", true);
+    });
+
+    document.getElementById("destSearchBtn").addEventListener("click", () => {
+        const term = document.getElementById("destSearch").value;
+        searchStops(term, "destResults", "destError", false);
+    });
+
+    document.getElementById("loadTripsBtn").addEventListener("click", async () => {
+        const tripsDiv = document.getElementById("tripsResult");
+        const errorDiv = document.getElementById("tripsError");
+        tripsDiv.innerHTML = "";
+        errorDiv.textContent = "";
+
+        if (!chosenFromId || !chosenToId) {
+            errorDiv.textContent = "Du må velge både START og DESTINASJON først.";
+            return;
+        }
+
+        try {
+            const url = `/api/mock/trips?fromId=${encodeURIComponent(chosenFromId)}&toId=${encodeURIComponent(chosenToId)}`;
+            const resp = await fetch(url);
+            if (!resp.ok) {
+                const txt = await resp.text();
+                errorDiv.textContent = `Feil fra server: ${resp.status} (${txt})`;
+                return;
+            }
+            const trips = await resp.json();
+
+            if (trips.length === 0) {
+                tripsDiv.textContent = "Fant ingen direkte turer mellom disse stoppene.";
+                return;
+            }
+
+            const header = document.createElement("p");
+            header.textContent =
+                `Direkte avganger fra ${chosenFromName} til ${chosenToName} denne dagen (${trips.length} funnet):`;
+            tripsDiv.appendChild(header);
+
+            trips.forEach((t, idx) => {
+                const div = document.createElement("div");
+                div.className = "trip";
+                div.innerHTML = `
+          <strong>${idx + 1}) Linje ${t.line}</strong> mot ${t.direction}<br>
+          Avgang: ${t.departureTime} – Ankomst: ${t.arrivalTime}<br>
+          Varighet: ${t.durationMinutes} min, stopp før destinasjon: ${t.stopsBeforeDest}
+        `;
+                tripsDiv.appendChild(div);
+            });
+
+        } catch (err) {
+            console.error(err);
+            errorDiv.textContent = "Klarte ikke å hente avganger.";
+        }
+    });
+</script>
+</body>
+</html>
