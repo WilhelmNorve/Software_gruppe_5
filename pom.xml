@@ -77,7 +77,7 @@
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <!-- Start webserveren som main -->
-                                    <mainClass>no.hia.oblig4.webApp</mainClass>
+                                    <mainClass>no.hia.oblig4.WebApp</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

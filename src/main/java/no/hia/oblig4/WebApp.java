@@ -87,7 +87,6 @@ public class WebApp {
             }
         }
 
-        // f.eks. "hælden", "frdrikstad", "måsss"
         if (bestDist <= 3) {
             return best;
         }
@@ -140,8 +139,11 @@ public class WebApp {
         String jdbcUrl = "jdbc:sqlite:" + dbPath;
         System.out.println("💾 Bruker database: " + jdbcUrl);
 
-        UserAuthenticator auth = new UserAuthenticator(jdbcUrl);
-        FavoritesDao     favs  = new FavoritesDao(jdbcUrl);
+        // Tjenester som bruker DB
+        UserAuthenticator auth    = new UserAuthenticator(jdbcUrl);
+        FavoritesDao      favs    = new FavoritesDao(jdbcUrl);
+        UserCreator       userCreator = new UserCreator(jdbcUrl);
+        UserDeleter       userDeleter = new UserDeleter(jdbcUrl);
 
         // Mock-stopp & mock-ruter (samme som Main5) + nearestStopFinder
         try {
@@ -159,7 +161,7 @@ public class WebApp {
             NEAREST_STOP_FINDER  = null;
         }
 
-        // Entur-klient for sanntidsavganger (kan fortsatt brukes andre steder)
+        // Entur-klient for sanntidsavganger
         ENTUR_CLIENT = new EnturClient(CLIENT_NAME);
 
         System.out.println("📡 Starter på port " + p + " (ønsket: " + desired + ")");
@@ -192,6 +194,88 @@ public class WebApp {
             if (req.session(false) != null) req.session().invalidate();
             res.type("application/json; charset=utf-8");
             return "{\"status\":\"ok\"}";
+        });
+
+        // ---------- Registrering av ny bruker ----------
+
+        post("/register", (req, res) -> {
+            String username = req.queryParams("username");
+            String password = req.queryParams("password");
+
+            if (username == null || password == null ||
+                    username.isBlank() || password.isBlank()) {
+                res.status(400);
+                return "missing-params";
+            }
+
+            username = username.trim();
+
+            // Sjekk om brukernavn allerede finnes
+            String checkSql = "SELECT 1 FROM users WHERE username = ? LIMIT 1";
+            try (Connection c = DriverManager.getConnection(jdbcUrl);
+                 PreparedStatement ps = c.prepareStatement(checkSql)) {
+
+                ps.setString(1, username);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        res.status(409);      // conflict → brukernavn opptatt
+                        return "username-taken";
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                res.status(500);
+                return "db-error";
+            }
+
+            try {
+                long id = userCreator.createUser(username, password); // TODO: hash passord i ekte system
+                res.status(200);
+                return "user-created-" + id;
+            } catch (Exception e) {
+                e.printStackTrace();
+                res.status(500);
+                return "could-not-create-user";
+            }
+        });
+
+        // ---------- Slett konto ----------
+
+        post("/delete-account", (req, res) -> {
+            String username = req.queryParams("username");
+            String password = req.queryParams("password");
+
+            if (username == null || password == null ||
+                    username.isBlank() || password.isBlank()) {
+                res.status(400);
+                return "missing-params";
+            }
+
+            username = username.trim();
+
+            try {
+                if (!auth.authenticate(username, password)) {
+                    res.status(401);
+                    return "bad-credentials";
+                }
+
+                int rows = userDeleter.deleteByUsername(username);
+                if (rows == 0) {
+                    res.status(404);
+                    return "user-not-found";
+                }
+
+                if (req.session(false) != null) {
+                    req.session().invalidate();
+                }
+
+                res.status(200);
+                return "user-deleted";
+            } catch (Exception e) {
+                e.printStackTrace();
+                res.status(500);
+                return "could-not-delete-user";
+            }
         });
 
         // ---------- Favoritter (krever innlogging) ----------
@@ -299,15 +383,10 @@ public class WebApp {
         });
 
         /* ==========================================================
-         *  MOCK-ENDPOINTS SOM BRUKER stopSearch + directTripFinder
-         *  (samme logikk som i Main5, men via HTTP)
-         *  DISSE ER ÅPNE – KREVER IKKE INNLOGGING
+         *  MOCK-ENDPOINTS (samme som før)
          * ========================================================== */
 
-        // 1) Søk etter stopp med navn → liste av konkrete quays
-        //    GET /api/mock/stops?q=Halden
-        //    Fuzzy: "hælden" → "halden".
-        //    Hvis vi ikke skjønner stedet → 404 "unknown-place".
+        // 1) /api/mock/stops
         get("/api/mock/stops", (req, res) -> {
 
             String q = req.queryParams("q");
@@ -324,7 +403,6 @@ public class WebApp {
             String term = q.trim();
             List<String> ids = MOCK_STOP_SEARCH.lookup(term);
 
-            // Fuzzy korreksjon hvis ingen treff
             if (ids.isEmpty()) {
                 String guess = guessKnownPlaceName(term);
                 if (guess != null) {
@@ -333,7 +411,6 @@ public class WebApp {
                 }
             }
 
-            // Fortsatt ingen? Da skjønner vi ikke stedet – som i Main5.
             if (ids.isEmpty()) {
                 System.out.println("❌ /api/mock/stops: ukjent sted \"" + term + "\"");
                 res.status(404);
@@ -363,8 +440,7 @@ public class WebApp {
             return json.toString();
         });
 
-        // 2) Finn alle direkte turer mellom to quays (med "smart" retning og forsinkelser)
-        //    GET /api/mock/trips?fromId=NSR:Quay:4462&toId=NSR:Quay:101991
+        // 2) /api/mock/trips
         get("/api/mock/trips", (req, res) -> {
 
             String fromIdRaw = req.queryParams("fromId");
@@ -386,11 +462,9 @@ public class WebApp {
             String effectiveFromId = originalFromId;
             String effectiveToId   = originalToId;
 
-            // Først: forsøk direkte
             List<DirectTripFinder.Trip> trips =
                     MOCK_TRIP_FINDER.findTrips(effectiveFromId, effectiveToId);
 
-            // Hvis ingen turer: prøv å være "smart" og finne riktig kant / retning
             if (trips.isEmpty()) {
                 String fromName = MOCK_STOP_SEARCH.getStopName(originalFromId);
                 String toName   = MOCK_STOP_SEARCH.getStopName(originalToId);
@@ -429,7 +503,6 @@ public class WebApp {
                 }
             }
 
-            // Bygg svar: faktisk brukte stopp + turer
             String fromNameUsed = MOCK_STOP_SEARCH.getStopName(effectiveFromId);
             String toNameUsed   = MOCK_STOP_SEARCH.getStopName(effectiveToId);
 
@@ -446,14 +519,12 @@ public class WebApp {
                     .append("\"name\":").append(jsonEscape(toNameUsed != null ? toNameUsed : effectiveToId))
                     .append("},");
 
-            // Selve turene med forsinkelses-info
             json.append("\"trips\":[");
             boolean first = true;
             for (DirectTripFinder.Trip t : trips) {
                 if (!first) json.append(',');
                 first = false;
 
-                // Tilfeldig forsinkelse / kansellering, som i Main5
                 DelaySimulator.DelayInfo d = DELAY_SIM.getDelay(t, effectiveFromId, effectiveToId);
 
                 json.append('{')
@@ -477,8 +548,7 @@ public class WebApp {
             return json.toString();
         });
 
-        // 3) Finn turer basert på NAVN på stopp (med fuzzy + forsinkelse)
-        //    GET /api/mock/tripsByName?from=Halden&to=Sarpsborg
+        // 3) /api/mock/tripsByName
         get("/api/mock/tripsByName", (req, res) -> {
 
             if (MOCK_STOP_SEARCH == null || MOCK_TRIP_FINDER == null) {
@@ -498,7 +568,6 @@ public class WebApp {
             fromName = fromName.trim();
             toName   = toName.trim();
 
-            // fuzzy-korreksjon av navn
             String gFrom = guessKnownPlaceName(fromName);
             if (gFrom != null) fromName = gFrom;
             String gTo   = guessKnownPlaceName(toName);
@@ -559,8 +628,7 @@ public class WebApp {
             return json.toString();
         });
 
-        // 4) Finn nærmeste stopp til en geo-posisjon (lat/lon)
-        //    GET /api/mock/nearestStop?lat=59.123&lon=11.234
+        // 4) /api/mock/nearestStop
         get("/api/mock/nearestStop", (req, res) -> {
 
             String latStr = req.queryParams("lat");
@@ -603,11 +671,7 @@ public class WebApp {
             return json.toString();
         });
 
-        /* ----------------------------------------------------------
-         *  /api/entur/departures (ekte Entur – her har vi ikke
-         *  lagt inn forsinkelsessimulatoren, Entur svarer selv)
-         * ---------------------------------------------------------- */
-
+        // 5) /api/entur/departures
         get("/api/entur/departures", (req, res) -> {
 
             String id = req.queryParams("quay_id");
@@ -621,7 +685,7 @@ public class WebApp {
                 String lim = req.queryParams("limit");
                 if (lim != null) limit = Integer.parseInt(lim.trim());
             } catch (Exception ignored) {}
-//hei
+
             try {
                 id = normalizeQuayId(id.trim());
                 String json = ENTUR_CLIENT.fetchDepartures(id, limit);
@@ -641,4 +705,5 @@ public class WebApp {
         System.out.println("🚀 Server startet: http://localhost:" + p);
     }
 }
+
 

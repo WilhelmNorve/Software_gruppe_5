@@ -1,0 +1,635 @@
+:root {
+    color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: linear-gradient(
+            180deg,
+            #0f172a 0%,
+            #0f766e 40%,
+            #16a34a 100%
+    );
+    color: #f9fafb;
+}
+
+.page {
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+}
+
+/* Kortet i midten – glass/teal-aktig */
+.card {
+    background: rgba(15, 118, 110, 0.45);
+    border-radius: 24px;
+    padding: 1.8rem 1.5rem 1.4rem;
+    box-shadow:
+            0 18px 45px rgba(0, 0, 0, 0.35),
+            0 0 0 1px rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+h1 {
+    margin: 0 0 1.3rem;
+    font-size: 1.45rem;
+    font-weight: 700;
+    text-align: left;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.45);
+}
+
+/* Skjema-layout */
+form {
+    margin-top: 0.25rem;
+    display: grid;
+    gap: 0.9rem;
+}
+
+label {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    text-align: left;
+    color: #e5e7eb;
+}
+
+/* Input-bokser – brede, avrundede */
+input {
+    padding: 0.7rem 0.95rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    font-size: 0.98rem;
+    width: 100%;
+    background: rgba(15, 118, 110, 0.25);
+    color: #f9fafb;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    transition:
+            border-color 150ms ease,
+            box-shadow 150ms ease,
+            background-color 150ms ease,
+            transform 120ms ease;
+}
+
+input::placeholder {
+    color: #cbd5f5;
+}
+
+input:focus {
+    outline: none;
+    border-color: #38bdf8;
+    background: rgba(15, 118, 110, 0.4);
+    box-shadow:
+            0 0 0 2px rgba(56, 189, 248, 0.5),
+            0 6px 14px rgba(15, 23, 42, 0.5);
+    transform: translateY(-1px);
+}
+
+/* Standard blå knapp */
+button {
+    padding: 0.8rem 0.9rem;
+    border-radius: 999px;
+    border: 0;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    background: #2563eb;
+    color: #ffffff;
+    width: 100%;
+    margin-top: 0.4rem;
+    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.65);
+    transition:
+            background-color 150ms ease,
+            box-shadow 150ms ease,
+            transform 120ms ease;
+}
+
+button:hover:not([disabled]) {
+    background: #1d4ed8;
+    box-shadow: 0 14px 26px rgba(37, 99, 235, 0.8);
+    transform: translateY(-1px);
+}
+
+button:active:not([disabled]) {
+    transform: translateY(0);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.7);
+}
+
+button[disabled] {
+    opacity: 0.65;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Meldinger under knappen på login */
+#msg {
+    margin-top: 0.6rem;
+    min-height: 1.2em;
+    font-size: 0.9rem;
+}
+
+.ok   { color: #4ade80; }
+.err  { color: #fecaca; }
+.info { color: #e5e7eb; }
+
+.help {
+    margin-top: 0.25rem;
+    font-size: 0.82rem;
+    color: #cbd5f5;
+}
+
+/* Nederste tekst ("Har Ikke Bruker?") */
+.bottom-text {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: #e5e7eb;
+}
+
+/* Registrer-knappen nederst */
+.link-button {
+    display: inline-block;
+    padding: 0.6rem 1.8rem;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    width: auto;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.55);
+    transition:
+            background-color 150ms ease,
+            box-shadow 150ms ease,
+            transform 120ms ease;
+    margin-left: 0.5rem;
+}
+
+.link-button:hover {
+    background: #1d4ed8;
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.7);
+    transform: translateY(-1px);
+}
+
+.link-button:active {
+    transform: translateY(0);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.7);
+}
+
+/* Skjult element (brukes for kortbytte) */
+.hidden {
+    display: none;
+}
+
+/* Meldingslinje på andre sider (f.eks. delete) */
+.msg-line {
+    margin-top: 0.6rem;
+    min-height: 1.2em;
+    font-size: 0.9rem;
+}
+
+/* Delete-side – egen stil for rød knapp og link */
+.danger-btn {
+    background: #b91c1c;
+    box-shadow: 0 10px 22px rgba(185, 28, 28, 0.7);
+}
+
+.danger-btn:hover:not([disabled]) {
+    background: #991b1b;
+    box-shadow: 0 14px 26px rgba(185, 28, 28, 0.85);
+}
+
+.danger-btn:active:not([disabled]) {
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.7);
+}
+
+.link {
+    color: #38bdf8;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* Util-klasser som brukes i departures2 */
+.ml-auto {
+    margin-left: auto;
+}
+
+/* Til innlogging-knapp i toppen på departures2 */
+.back-login-btn {
+    margin-top: 0.6rem;
+}
+
+/* Sekundær og små knapper (brukes bl.a. i departures2) */
+button.secondary {
+    background: transparent;
+    color: #38bdf8;
+    border: 1px solid #38bdf8;
+    box-shadow: none;
+}
+
+button.secondary:hover:not([disabled]) {
+    background: rgba(56,189,248,0.08);
+    box-shadow: none;
+}
+
+button.small {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+    width: auto;          /* små knapper skal ikke være full bredde */
+}
+
+/* Litt finere spacing på større skjermer */
+@media (min-width: 600px) {
+    body {
+        padding: 2rem;
+    }
+
+    .card {
+        padding: 2.1rem 2rem 1.8rem;
+    }
+
+    h1 {
+        font-size: 1.6rem;
+    }
+}
+
+/* =========================================================
+   Departures / rute 630 – deler layout og look med index
+   ========================================================= */
+
+.page.page-departures {
+    max-width: 1024px;
+    margin: 0 auto;
+    text-align: left;
+    padding: 1rem 1rem 2rem;
+}
+
+/* Header med flagg-knapp til høyre */
+.page-departures header {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.page-departures .header-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.page-departures h1 {
+    margin: 0 0 0.25rem;
+    font-size: 1.3rem;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.45);
+}
+
+.page-departures .muted {
+    color: #e5e7eb;
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.page-departures .muted-small {
+    color: #cbd5f5;
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+/* Språkvelger */
+.page-departures .lang-switch {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.page-departures .lang-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid rgba(148,163,184,0.7);
+    background: rgba(15,23,42,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 20px;
+    box-shadow: 0 10px 22px rgba(15,23,42,0.7);
+}
+
+.page-departures .lang-menu {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 6px;
+    background: rgba(15,23,42,0.95);
+    border-radius: 12px;
+    border: 1px solid rgba(148,163,184,0.7);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.45);
+    padding: 4px;
+    display: none;
+    z-index: 30;
+}
+
+.page-departures .lang-menu.open {
+    display: block;
+}
+
+.page-departures .lang-flag {
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    border: 1px solid rgba(148,163,184,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin: 2px;
+    background: rgba(15,23,42,0.9);
+}
+
+/* Layout: hovedkolonne + lagrede ruter */
+.page-departures .layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.page-departures .main-column {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.page-departures .saved-column {
+    flex: 0 0 auto;
+}
+
+@media (min-width: 900px) {
+    .page-departures .layout {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+    .page-departures .saved-column {
+        width: 280px;
+        padding-top: 1.8rem;
+        margin-left: 1rem;
+    }
+}
+
+/* Skjema / inputs */
+.page-departures form {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.page-departures .inputs {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+.page-departures .field {
+    position: relative;
+    display: grid;
+    gap: 0.25rem;
+}
+
+/* Overstyr input-bakgrunn litt for denne siden */
+.page-departures input {
+    background: rgba(15,23,42,0.75);
+}
+
+/* Actions under feltene */
+.page-departures .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Meldingslinje på departures */
+.page-departures #msg {
+    min-height: 1.4em;
+    font-size: 0.9rem;
+}
+
+/* Paneler – glasskort ala login */
+.page-departures .panel {
+    border-radius: 20px;
+    border: 1px solid rgba(148,163,184,0.6);
+    padding: 1rem;
+    margin-top: 1rem;
+    background: rgba(15,118,110,0.45);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow:
+            0 18px 45px rgba(0,0,0,0.45),
+            0 0 0 1px rgba(255,255,255,0.06);
+    overflow: hidden;
+}
+
+.page-departures .panel h2,
+.page-departures .panel h3 {
+    margin-top: 0;
+    font-size: 1.05rem;
+}
+
+.page-departures .grid {
+    display: grid;
+    gap: 0.5rem;
+}
+
+/* Rader for avganger */
+.page-departures .dep-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.7rem 0.8rem;
+    border-radius: 14px;
+    border: 1px solid rgba(148,163,184,0.7);
+    background: rgba(15,23,42,0.85);
+    cursor: pointer;
+    overflow: hidden;
+    box-shadow: 0 10px 22px rgba(15,23,42,0.7);
+}
+
+.page-departures .dep-row:hover {
+    outline: 2px solid rgba(56,189,248,0.5);
+}
+
+.page-departures .dep-row.cancelled {
+    opacity: 0.7;
+    border-style: dashed;
+}
+
+.page-departures .code {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.page-departures .time {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    font-size: 0.9rem;
+}
+
+.page-departures .time span {
+    display: block;
+}
+
+/* Status-badges */
+.page-departures .status-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    margin-top: 2px;
+    white-space: nowrap;
+}
+
+.page-departures .status-on-time {
+    background: #e8f5e9;
+    color: #1b5e20;
+}
+
+.page-departures .status-delayed {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.page-departures .status-cancelled {
+    background: #ffebee;
+    color: #b71c1c;
+}
+
+/* Autocomplete-drop down */
+.page-departures .ac {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: rgba(15,23,42,0.98);
+    border-radius: 10px;
+    border: 1px solid rgba(148,163,184,0.7);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.6);
+    z-index: 20;
+}
+
+.page-departures .ac[hidden] {
+    display: none;
+}
+
+.page-departures .ac ul {
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    max-height: 260px;
+    overflow: auto;
+}
+
+.page-departures .ac li {
+    padding: 0.55rem 0.6rem;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.page-departures .ac li[aria-selected="true"],
+.page-departures .ac li:hover {
+    background: rgba(56,189,248,0.12);
+}
+
+.page-departures .ac .title {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.page-departures .ac .sub {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+/* Lagrede ruter – kort i høyrekolonnen */
+.page-departures .saved-card {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+    padding: 0.6rem 0.7rem 0.55rem;
+    border-radius: 12px;
+    border: 1px solid rgba(148,163,184,0.7);
+    background: rgba(15,23,42,0.9);
+    overflow: hidden;
+}
+
+.page-departures .saved-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.page-departures .saved-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+}
+
+.page-departures .saved-time {
+    font-variant-numeric: tabular-nums;
+}
+
+.page-departures .saved-actions {
+    margin-top: 0.25rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Tabell i detaljpanel */
+.page-departures .detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.page-departures .detail-table th {
+    text-align: left;
+    padding: 2px 0;
+    font-weight: 600;
+}
+
+.page-departures .detail-table td {
+    padding: 2px 0;
+}
+
+.page-departures .detail-separator {
+    margin: 0.75rem 0;
+    border: none;
+    border-top: 1px solid rgba(148,163,184,0.7);
+}
+
+/* To-kolonne inputs på bredere skjermer */
+@media (min-width: 640px) {
+    .page-departures .inputs {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+

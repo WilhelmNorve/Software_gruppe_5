@@ -6,3 +6,12 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+
+
+
+
+
+
+
+
+
