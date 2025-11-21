@@ -4,22 +4,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-/**
- * Enkel simulator som lager tilfeldige forsinkelser for avganger.
- * - Nye tilfeldige forsinkelser hver gang programmet kjører
- * - Samme rute (samme tur) får samme forsinkelse innen én kjøring
- *
- * NB: Dette er MOCK-data, ikke ekte sanntid.
- */
 public class DelaySimulator {
 
     private final Random random;
     private final Map<String, DelayInfo> cache = new HashMap<>();
 
     public static class DelayInfo {
-        public final int delayMinutes;      // 0 = i rute, >0 = forsinket
-        public final String newDeparture;   // ny avgang ved start-stopp
-        public final String newArrival;     // ny ankomst ved destinasjon
+        public final int delayMinutes;
+        public final String newDeparture;
+        public final String newArrival;
 
         public DelayInfo(int delayMinutes, String newDeparture, String newArrival) {
             this.delayMinutes = delayMinutes;
@@ -29,19 +22,16 @@ public class DelaySimulator {
     }
 
     public DelaySimulator() {
-        // Nye forsinkelser hver gang programmet starter
+
         this.random = new Random();
     }
 
     public DelaySimulator(long seed) {
-        // Kan brukes for testing med deterministisk oppførsel
+
         this.random = new Random(seed);
     }
 
-    /**
-     * Hent (eller generer) forsinkelse for en gitt tur mellom start og dest.
-     * Forsinkelsen caches, så samme tur får samme delay i én kjøring.
-     */
+
     public DelayInfo getDelay(DirectTripFinder.Trip t, String startId, String destId) {
         if (t == null) {
             return new DelayInfo(0, null, null);
@@ -62,7 +52,7 @@ public class DelaySimulator {
         return info;
     }
 
-    /** Lager en nøkkel som identifiserer en "tur" fra A til B. */
+
     private String makeKey(DirectTripFinder.Trip t, String startId, String destId) {
         return (t.serviceJourneyId != null ? t.serviceJourneyId : "?") + "|" +
                 (t.departureTime != null ? t.departureTime : "?") + "|" +
@@ -70,14 +60,7 @@ public class DelaySimulator {
                 (destId != null ? destId : "?");
     }
 
-    /**
-     * Tilfeldig forsinkelse:
-     * - ca. 50% i rute
-     * - ca. 10% +5 min
-     * - ca. 10% +10 min
-     * - ca. 15% +20 min
-     * - ca. 15% +30 min  (disse behandles som kansellert i UI)
-     */
+
     private int randomDelayMinutes() {
         int r = random.nextInt(20); // 0–19
 
@@ -94,10 +77,7 @@ public class DelaySimulator {
         }
     }
 
-    /**
-     * Legger X minutter til en tid på format HH:MM eller HH:MM:SS.
-     * Ruller over midnatt hvis nødvendig.
-     */
+
     private String addMinutes(String time, int minutes) {
         if (time == null || minutes == 0) return time;
         String[] parts = time.split(":");
@@ -107,7 +87,7 @@ public class DelaySimulator {
         int m = Integer.parseInt(parts[1]);
 
         int total = h * 60 + m + minutes;
-        // håndterer rulling over midnatt
+
         total = Math.floorMod(total, 24 * 60);
 
         int newH = total / 60;

@@ -5,24 +5,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-/**
- * Finner direkte turer mellom to NSR:Quay-id-er.
- * Gir også antall stopp før ankomst og estimert reisetid.
- */
 public class DirectTripFinder {
-
-    /** Alle stopp gruppert per service_journey_id */
     private final Map<String, List<Map<String, Object>>> byService = new HashMap<>();
 
-    /** Info om én direkte tur fra A til B */
     public static class Trip {
         public final String serviceJourneyId;
         public final String line;
         public final String direction;
-        public final String departureTime;   // ved start
-        public final String arrivalTime;     // ved stopp
-        public final int stopsBeforeDest;    // antall stopp mellom start og stopp (utenom dest)
-        public final int durationMinutes;    // estimert reisetid i minutter (eller -1 hvis ukjent)
+        public final String departureTime;
+        public final String arrivalTime;
+        public final int stopsBeforeDest;
+        public final int durationMinutes;
 
         public Trip(String serviceJourneyId,
                     String line,
@@ -49,23 +42,20 @@ public class DirectTripFinder {
         List<Map<String, Object>> rows =
                 (List<Map<String, Object>>) StopSearch.MiniJson.parse(json);
 
-        // grupper per service_journey_id
+
         for (Map<String, Object> row : rows) {
             String sid = (String) row.get("service_journey_id");
             if (sid == null) continue;
             byService.computeIfAbsent(sid, k -> new ArrayList<>()).add(row);
         }
 
-        // sorter hver service etter stop_sequence
+
         for (List<Map<String, Object>> list : byService.values()) {
             list.sort(Comparator.comparingInt(m -> asInt(m.get("stop_sequence"))));
         }
     }
 
-    /**
-     * Finn alle direkte turer fra startQuayId til stopQuayId
-     * (dvs. samme service_journey_id, og start kommer før stopp).
-     */
+
     public List<Trip> findTrips(String startQuayId, String stopQuayId) {
         List<Trip> trips = new ArrayList<>();
 
@@ -87,7 +77,7 @@ public class DirectTripFinder {
                 }
             }
 
-            // krever at bussen besøker start før stopp
+
             if (startIdx == null || stopIdx == null || startIdx >= stopIdx) continue;
 
             Map<String, Object> startRow = stops.get(startIdx);
@@ -96,10 +86,10 @@ public class DirectTripFinder {
             String dep = toStr(startRow.get("departure_time"));
             String arr = toStr(stopRow.get("arrival_time"));
 
-            // antall stopp før dest (mellom A og B)
+
             int stopsBeforeDest = Math.max(0, stopIdx - startIdx - 1);
 
-            // linje og retning
+
             String line = extractLineNumber(sid);
             String direction = null;
 
@@ -107,7 +97,7 @@ public class DirectTripFinder {
             if (extra1Stop != null) {
                 direction = extra1Stop.toString();
             } else {
-                // prøv å finne noe extra1 i samme journey
+
                 for (Map<String, Object> r : stops) {
                     if (r.get("extra1") != null) {
                         direction = r.get("extra1").toString();
@@ -125,7 +115,7 @@ public class DirectTripFinder {
                 Integer arrSec = parseTimeToSeconds(arr);
                 if (depSec != null && arrSec != null) {
                     int diff = arrSec - depSec;
-                    if (diff < 0) diff += 24 * 3600; // hvis det ruller over midnatt
+                    if (diff < 0) diff += 24 * 3600;
                     durationMinutes = diff / 60;
                 }
             }
@@ -133,7 +123,7 @@ public class DirectTripFinder {
             trips.add(new Trip(sid, line, direction, dep, arr, stopsBeforeDest, durationMinutes));
         }
 
-        // sorter på avgangstid
+
         trips.sort(Comparator.comparing(t ->
                 t.departureTime == null ? "99:99:99" : t.departureTime));
         return trips;
@@ -171,14 +161,14 @@ public class DirectTripFinder {
         }
     }
 
-    /** Trekker linjenummer ut fra f.eks. "OST:ServiceJourney:630_2503..." → "630". */
+
     private String extractLineNumber(String serviceId) {
         try {
             String[] parts = serviceId.split(":");
             if (parts.length < 3) return "?";
-            String tail = parts[2];        // f.eks. "630_2503..."
+            String tail = parts[2];
             String[] tailParts = tail.split("_");
-            return tailParts[0];           // "630"
+            return tailParts[0];
         } catch (Exception e) {
             return "?";
         }

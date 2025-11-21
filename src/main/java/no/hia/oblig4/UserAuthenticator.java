@@ -6,7 +6,6 @@ public class UserAuthenticator {
     private final String jdbcUrl;
     public UserAuthenticator(String jdbcUrl) { this.jdbcUrl = jdbcUrl; }
 
-    /** Returnerer userId hvis (username,password) matcher, ellers null. */
     public Long authenticateAndGetId(String username, String password) throws Exception {
         final String sql = """
             SELECT id FROM users

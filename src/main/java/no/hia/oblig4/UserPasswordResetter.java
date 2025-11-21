@@ -11,10 +11,7 @@ public class UserPasswordResetter {
         this.jdbcUrl = jdbcUrl;
     }
 
-    /**
-     * Endrer passordet (password_hash) til en eksisterende bruker.
-     * Returnerer antall oppdaterte rader (0 eller 1).
-     */
+
     public int resetPassword(String username, String newPassword) throws Exception {
         final String sql = "UPDATE users SET password_hash = ? WHERE username = ?";
         try (Connection conn = DriverManager.getConnection(jdbcUrl);

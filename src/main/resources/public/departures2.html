@@ -18,7 +18,7 @@
             </p>
         </div>
 
-        <!-- Høyre del av header: språk + tilbake-knapp -->
+
         <div>
             <div class="lang-switch">
                 <button type="button" class="lang-btn" id="langBtn" title="Språk">
@@ -39,7 +39,7 @@
     </header>
 
     <div class="layout">
-        <!-- VENSTRE KOLONNE: søk + avganger -->
+
         <div class="main-column">
             <form id="form" autocomplete="off">
                 <div class="inputs">
@@ -133,12 +133,11 @@
         savedPanel.hidden = !savedPanel.hidden;
     });
 
-    // Til innlogging-knapp
+
     backToLoginBtn.addEventListener('click', () => {
         window.location.href = "index.html";
     });
 
-    // Språk-ikon: bare vis/skjul menyen – ingen språkbytte
     langBtn.addEventListener('click', () => {
         langMenu.classList.toggle('open');
     });
@@ -205,7 +204,6 @@
         });
     });
 
-    // -------- Hent avganger mellom valgt fra/til ----------
     async function onSubmit(e){
         e.preventDefault();
         msg.className = 'info';
@@ -566,7 +564,6 @@
         }
     }
 
-    // *** Lagrede ruter – navn, tid og status + fjern-knapp under ***
     function renderSavedRoutes() {
         savedList.innerHTML = '';
         if (!savedRoutes.length) {

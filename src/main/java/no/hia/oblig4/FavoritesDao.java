@@ -63,7 +63,7 @@ public class FavoritesDao {
     private static String normalizeQuayId(String input) {
         if (input == null) return null;
         String s = input.trim();
-        if (s.matches("^\\d+$")) return "NSR:Quay:" + s; // bare tall -> prefiksér
+        if (s.matches("^\\d+$")) return "NSR:Quay:" + s;
         return s;
     }
 }

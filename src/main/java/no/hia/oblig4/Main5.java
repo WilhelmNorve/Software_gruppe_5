@@ -6,7 +6,6 @@ import java.util.Scanner;
 
 public class Main5 {
 
-    // Simulator for mock-forsinkelser (samme som i webApp)
     private static final DelaySimulator DELAY_SIM = new DelaySimulator();
 
     public static void main(String[] args) throws Exception {
@@ -21,18 +20,16 @@ public class Main5 {
 
         List<String> startCandidates;
 
-        // -------- 1: VELG START-STOPP (med navn) --------
         while (true) {
             System.out.print("Søk etter START-stopp (vanlig navn): ");
             String startSearch = sc.nextLine().trim();
 
-            // Prøv å gjette om brukeren egentlig mente Halden/Fredrikstad/Moss
             startSearch = maybeCorrectPlaceInput(startSearch, "START-stopp", sc);
 
             startCandidates = search.lookup(startSearch);
 
             if (!startCandidates.isEmpty()) {
-                break; // vi har gyldige kandidater
+                break;
             }
 
             System.out.println("Fant ingen stopp som matcher: \"" + startSearch + "\".");
@@ -63,14 +60,12 @@ public class Main5 {
         String chosenStartId   = startCandidates.get(startChoice - 1);
         String chosenStartName = search.getStopName(chosenStartId);
 
-        // -------- 2: VELG DESTINASJON-STOPP (med navn) --------
         List<String> destCandidates;
 
         while (true) {
             System.out.print("\nSøk etter DESTINASJON-stopp (vanlig navn): ");
             String destSearch = sc.nextLine().trim();
 
-            // Fuzzy-heuristikk for destinasjon
             destSearch = maybeCorrectPlaceInput(destSearch, "DESTINASJON-stopp", sc);
 
             destCandidates = search.lookup(destSearch);
@@ -138,12 +133,7 @@ public class Main5 {
         sc.close();
     }
 
-    /**
-     * Fallback:
-     *  1) Prøver å finne rute med SAMME start-stopp og annen destinasjon.
-     *  2) Prøver å finne rute med SAMME destinasjon og annet start-stopp.
-     *  3) Hvis fortsatt ingenting: prøver alle kombinasjoner (unntatt den brukeren valgte).
-     */
+
     private static boolean findAlternativeRoute(
             StopSearch search,
             DirectTripFinder finder,
@@ -178,7 +168,6 @@ public class Main5 {
             }
         }
 
-        // 2) Samme destinasjon, prøv andre start-stopp
         for (String startId : startCandidates) {
             if (startId.equals(chosenStartId)) continue; // hopp over den brukeren valgte
 
@@ -199,7 +188,7 @@ public class Main5 {
             }
         }
 
-        // 3) Hvis ingenting funket: prøv alle kombinasjoner (som siste utvei)
+
         for (String startId : startCandidates) {
             String startName = search.getStopName(startId);
 
@@ -226,11 +215,6 @@ public class Main5 {
         return false;
     }
 
-    /**
-     * Viser alle avganger (som liste), lar brukeren velge én,
-     * eller 0 for å få detaljinfo om alle.
-     * Her vises også forsinkelse / i rute / kansellert på hver avgang.
-     */
     private static void showTripsInteractively(List<DirectTripFinder.Trip> trips,
                                                String startName, String startId,
                                                String destName,  String destId,
@@ -273,17 +257,17 @@ public class Main5 {
                 "Ugyldig valg. Skriv et tall mellom 0 og " + trips.size() + ".");
 
         if (choice == 0) {
-            // Vis detaljinfo for ALLE avganger
+
             for (DirectTripFinder.Trip t : trips) {
                 printTripDetails(t, startName, startId, destName, destId, search);
             }
         } else {
-            // Bruker har valgt én spesiell avgang
+
             DirectTripFinder.Trip chosen = trips.get(choice - 1);
             DelaySimulator.DelayInfo chosenDelay = DELAY_SIM.getDelay(chosen, startId, destId);
 
             if (chosenDelay.delayMinutes == 30) {
-                // Denne avgangen er kansellert → foreslå nærmeste rute som er i rute
+
                 System.out.println("\nDu har valgt en avgang som er KANSELLERT (30 min forsinkelse).");
 
                 DirectTripFinder.Trip alt = findAlternativeOnTimeTrip(trips, startId, destId, chosen);
@@ -299,7 +283,7 @@ public class Main5 {
                     System.out.println("  1) Gå tilbake til oversikten over alle avganger");
                     System.out.println("  2) Velg denne anbefalte avgangen og se detaljer");
 
-                    // validering av input 1/2
+
                     String altChoice;
                     while (true) {
                         System.out.print("Valg (1/2): ");
@@ -311,10 +295,10 @@ public class Main5 {
                     }
 
                     if ("2".equals(altChoice)) {
-                        // Vis detaljer for anbefalt avgang
+
                         printTripDetails(alt, startName, startId, destName, destId, search);
                     } else {
-                        // Gå tilbake til oversikten (vis lista på nytt)
+
                         showTripsInteractively(trips, startName, startId, destName, destId, search, sc);
                     }
                 } else {
@@ -323,18 +307,14 @@ public class Main5 {
                     showTripsInteractively(trips, startName, startId, destName, destId, search, sc);
                 }
 
-                // Ikke vis detaljvisning for kansellert avgang
                 return;
             }
 
-            // Ikke kansellert → vis fulle detaljer
+
             printTripDetails(chosen, startName, startId, destName, destId, search);
         }
     }
 
-    /**
-     * Skriver ut detaljinfo for én avgang.
-     */
     private static void printTripDetails(DirectTripFinder.Trip t,
                                          String startName, String startId,
                                          String destName,  String destId,
@@ -358,7 +338,6 @@ public class Main5 {
             System.out.println("Sanntidsstatus (mock): FORSINKET +" + d.delayMinutes + " min");
         }
 
-        // Estimert avgang fra start-stopp
         if (t.departureTime != null) {
             String etaDep = (d.newDeparture != null) ? d.newDeparture : t.departureTime;
             if (d.delayMinutes > 0 && d.delayMinutes != 30) {
@@ -370,7 +349,6 @@ public class Main5 {
             }
         }
 
-        // Estimert ankomst til destinasjon
         if (t.arrivalTime != null) {
             String etaArr = (d.newArrival != null) ? d.newArrival : t.arrivalTime;
             if (d.delayMinutes > 0 && d.delayMinutes != 30) {
@@ -382,8 +360,6 @@ public class Main5 {
             }
         }
 
-        // Koordinater – ikke tilgjengelig i denne mock-versjonen,
-        // men vi viser en forklarende linje i stedet for å kalle en manglende funksjon.
         System.out.println("Koordinater (start-stopp): ikke tilgjengelig i denne mock-versjonen.");
 
         System.out.println("Antall stopp før ankomst: " + t.stopsBeforeDest);
@@ -396,9 +372,6 @@ public class Main5 {
         System.out.println("-------------------------------------------------");
     }
 
-    /**
-     * Finn en alternativ avgang som er "i rute" (delay = 0).
-     */
     private static DirectTripFinder.Trip findAlternativeOnTimeTrip(
             List<DirectTripFinder.Trip> trips,
             String startId,
@@ -415,7 +388,6 @@ public class Main5 {
             }
         }
 
-        // Hvis vi ikke fant valgt avgang i lista, fall tilbake til "første i rute"
         if (chosenIndex == -1) {
             DirectTripFinder.Trip best = null;
             for (DirectTripFinder.Trip t : trips) {
@@ -458,12 +430,6 @@ public class Main5 {
         return best;
     }
 
-    /* ===================== Input-hjelper ===================== */
-
-    /**
-     * Leser et heltall fra Scanner, med validering og feilmeldinger,
-     * til brukeren skriver noe mellom min og max (inkludert).
-     */
     private static int readIntInRange(Scanner sc,
                                       String prompt,
                                       int min,
@@ -487,7 +453,6 @@ public class Main5 {
         }
     }
 
-    /* ===================== Fuzzy stedsnavn-hjelpere ===================== */
 
     private static String maybeCorrectPlaceInput(String input, String role, Scanner sc) {
         String original = input;
@@ -524,7 +489,7 @@ public class Main5 {
             }
         }
 
-        if (bestDist <= 3) { // f.eks. "hølden", "hæøden", "frdrikstad", "måsss"
+        if (bestDist <= 3) {
             return best;
         }
         return null;

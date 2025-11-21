@@ -12,20 +12,17 @@ public class WebApp {
 
     private static final String CLIENT_NAME  = "norve.oblig4/1.0 (kontakt@eksempel.no)";
 
-    // Mock-data (samme som i Main5)
+
     private static final String JOURNEYS_PATH = "src/main/resources/Rutetabell/Rutetider630.json";
     private static final String QUAYS_PATH    = "src/main/resources/Rutetabell/stops_630_only.json";
 
-    // Felles tjenester
     private static StopSearch        MOCK_STOP_SEARCH;
     private static DirectTripFinder  MOCK_TRIP_FINDER;
     private static EnturClient       ENTUR_CLIENT;
     private static NearestStopFinder NEAREST_STOP_FINDER;
 
-    // Tilfeldige forsinkelser / kanselleringer (samme som i Main5)
     private static final DelaySimulator DELAY_SIM = new DelaySimulator();
 
-    /* ---------------------- Hjelpere ---------------------- */
 
     private static String jsonEscape(String s) {
         if (s == null) return "null";
@@ -67,8 +64,6 @@ public class WebApp {
         if (s.matches("^\\d+$")) return "NSR:Quay:" + s;
         return s;
     }
-
-    /* ---------- Fuzzy stedsnavn (samme logikk som i Main5) ---------- */
 
     private static String guessKnownPlaceName(String raw) {
         if (raw == null) return null;
@@ -115,8 +110,6 @@ public class WebApp {
         return dp[n][m];
     }
 
-    /* ---------------------- main ---------------------- */
-
     public static void main(String[] args) {
 
         int desired = Integer.parseInt(System.getenv().getOrDefault("PORT", "8081"));
@@ -134,18 +127,15 @@ public class WebApp {
                 System.out.println(req.requestMethod() + " " + req.pathInfo() + " " + req.queryString()));
         after((req, res) -> System.out.println(" -> " + res.status()));
 
-        // DB
         String dbPath = Paths.get("src", "data", "app.db").toAbsolutePath().toString();
         String jdbcUrl = "jdbc:sqlite:" + dbPath;
         System.out.println("💾 Bruker database: " + jdbcUrl);
 
-        // Tjenester som bruker DB
         UserAuthenticator auth    = new UserAuthenticator(jdbcUrl);
         FavoritesDao      favs    = new FavoritesDao(jdbcUrl);
         UserCreator       userCreator = new UserCreator(jdbcUrl);
         UserDeleter       userDeleter = new UserDeleter(jdbcUrl);
 
-        // Mock-stopp & mock-ruter (samme som Main5) + nearestStopFinder
         try {
             MOCK_STOP_SEARCH     = new StopSearch(QUAYS_PATH);
             MOCK_TRIP_FINDER     = new DirectTripFinder(JOURNEYS_PATH);
@@ -161,17 +151,13 @@ public class WebApp {
             NEAREST_STOP_FINDER  = null;
         }
 
-        // Entur-klient for sanntidsavganger
         ENTUR_CLIENT = new EnturClient(CLIENT_NAME);
 
         System.out.println("📡 Starter på port " + p + " (ønsket: " + desired + ")");
         System.out.println("📄 Statisk innhold fra: src/main/resources/public");
 
-        /* ---------------------- Endepunkter ---------------------- */
 
         get("/health", (req, res) -> "ok");
-
-        // ---------- Innlogging / utlogging (for favoritter) ----------
 
         post("/login", (req, res) -> {
             String username = req.queryParams("username");
@@ -196,8 +182,6 @@ public class WebApp {
             return "{\"status\":\"ok\"}";
         });
 
-        // ---------- Registrering av ny bruker ----------
-
         post("/register", (req, res) -> {
             String username = req.queryParams("username");
             String password = req.queryParams("password");
@@ -210,7 +194,6 @@ public class WebApp {
 
             username = username.trim();
 
-            // Sjekk om brukernavn allerede finnes
             String checkSql = "SELECT 1 FROM users WHERE username = ? LIMIT 1";
             try (Connection c = DriverManager.getConnection(jdbcUrl);
                  PreparedStatement ps = c.prepareStatement(checkSql)) {
@@ -218,7 +201,7 @@ public class WebApp {
                 ps.setString(1, username);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
-                        res.status(409);      // conflict → brukernavn opptatt
+                        res.status(409);
                         return "username-taken";
                     }
                 }
@@ -239,7 +222,6 @@ public class WebApp {
             }
         });
 
-        // ---------- Slett konto ----------
 
         post("/delete-account", (req, res) -> {
             String username = req.queryParams("username");
@@ -277,8 +259,6 @@ public class WebApp {
                 return "could-not-delete-user";
             }
         });
-
-        // ---------- Favoritter (krever innlogging) ----------
 
         get("/api/favorites", (req, res) -> {
             Long userId = req.session().attribute("userId");
@@ -382,12 +362,7 @@ public class WebApp {
             return "{\"status\":\"ok\"}";
         });
 
-        /* ==========================================================
-         *  MOCK-ENDPOINTS (samme som før)
-         * ========================================================== */
-
-        // 1) /api/mock/stops
-        get("/api/mock/stops", (req, res) -> {
+            get("/api/mock/stops", (req, res) -> {
 
             String q = req.queryParams("q");
             if (q == null || q.isBlank()) {
@@ -440,7 +415,6 @@ public class WebApp {
             return json.toString();
         });
 
-        // 2) /api/mock/trips
         get("/api/mock/trips", (req, res) -> {
 
             String fromIdRaw = req.queryParams("fromId");
@@ -548,7 +522,7 @@ public class WebApp {
             return json.toString();
         });
 
-        // 3) /api/mock/tripsByName
+
         get("/api/mock/tripsByName", (req, res) -> {
 
             if (MOCK_STOP_SEARCH == null || MOCK_TRIP_FINDER == null) {
@@ -628,7 +602,6 @@ public class WebApp {
             return json.toString();
         });
 
-        // 4) /api/mock/nearestStop
         get("/api/mock/nearestStop", (req, res) -> {
 
             String latStr = req.queryParams("lat");
@@ -671,7 +644,6 @@ public class WebApp {
             return json.toString();
         });
 
-        // 5) /api/entur/departures
         get("/api/entur/departures", (req, res) -> {
 
             String id = req.queryParams("quay_id");
@@ -697,8 +669,6 @@ public class WebApp {
                 return "entur-error";
             }
         });
-
-        // ---------- Start server ----------
 
         init();
         awaitInitialization();

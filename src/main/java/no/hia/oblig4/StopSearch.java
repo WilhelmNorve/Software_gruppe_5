@@ -5,12 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-/**
- * Enkelt stoppesøk:
- *  - Søk etter stopp med navn (dele-match eller fullt navn)
- *  - Hent NSR:Quay-ID-er
- *  - Hent nøyaktig stoppnavn fra NSR:Quay-ID
- */
 public class StopSearch {
 
     private final Map<String, List<String>> nameToIds = new HashMap<>();

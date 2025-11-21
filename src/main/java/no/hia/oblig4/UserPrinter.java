@@ -11,12 +11,12 @@ public class UserPrinter {
         this.jdbcUrl = jdbcUrl;
     }
 
-    /** Skriver ut alle kolonner i users-tabellen, uansett hva som legges til senere. */
+
     public void printAllUsers() throws Exception {
         printTable("users");
     }
 
-    /** Generisk: skriv ut alle rader/kolonner i en tabell. */
+
     public void printTable(String table) throws Exception {
         // Enkel validering for å unngå SQL-injeksjon i tabellnavn
         if (!table.matches("[A-Za-z0-9_]+")) {
@@ -32,17 +32,17 @@ public class UserPrinter {
             ResultSetMetaData md = rs.getMetaData();
             int cols = md.getColumnCount();
 
-            // Les alle rader først for å kunne beregne kolonnebredder
+
             List<String[]> rows = new ArrayList<>();
             int[] widths = new int[cols];
 
-            // Start med kolonnenavn
+
             for (int i = 1; i <= cols; i++) {
                 String label = md.getColumnLabel(i);
                 widths[i - 1] = label.length();
             }
 
-            // Data
+
             while (rs.next()) {
                 String[] row = new String[cols];
                 for (int i = 1; i <= cols; i++) {
@@ -54,7 +54,6 @@ public class UserPrinter {
                 rows.add(row);
             }
 
-            // Skriv header
             StringBuilder header = new StringBuilder();
             for (int i = 1; i <= cols; i++) {
                 if (i > 1) header.append(" | ");
@@ -63,7 +62,7 @@ public class UserPrinter {
             }
             System.out.println(header);
 
-            // Separator
+
             StringBuilder sep = new StringBuilder();
             for (int i = 1; i <= cols; i++) {
                 if (i > 1) sep.append("-+-");
@@ -71,7 +70,7 @@ public class UserPrinter {
             }
             System.out.println(sep);
 
-            // Rader
+
             if (rows.isEmpty()) {
                 System.out.println("(ingen rader)");
                 return;

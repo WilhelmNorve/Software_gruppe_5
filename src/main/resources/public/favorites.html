@@ -34,7 +34,7 @@
     </div>
 </header>
 
-<!-- Panel som kun vises når bruker ikke er innlogget -->
+
 <div id="notAuthPanel" class="panel" hidden>
     <p id="notAuthText" class="err" style="margin:0 0 .5rem 0;">Du er ikke innlogget.</p>
     <div class="row">
@@ -43,7 +43,7 @@
     </div>
 </div>
 
-<!-- Legg til ny favoritt (valgfritt) -->
+
 <section>
     <h2 style="margin:.25rem 0 0;">Legg til favoritt</h2>
     <form id="addForm" class="block" autocomplete="on">
@@ -83,7 +83,6 @@
     goLoginBtn.addEventListener('click', () => location.href = 'index.html');
     tryAgainBtn.addEventListener('click', loadFavorites);
 
-    // --- Hovedlasting av favoritter ---
     async function loadFavorites() {
         hideNotAuth();
         msg.className = 'info';
@@ -106,7 +105,6 @@
 
             const ct = resp.headers.get('content-type') || '';
             if (!ct.includes('application/json')) {
-                // Server ga sannsynligvis HTML (f.eks. redirectet til login). Ikke auto-redirect her.
                 showNotAuth('Kunne ikke hente JSON fra serveren. Er du innlogget?');
                 list.hidden = true;
                 msg.textContent = '';
@@ -121,7 +119,6 @@
             let data = await resp.json();
             if (!Array.isArray(data)) data = [];
 
-            // Klientsortering hvis API ikke gjør det
             data.sort((a, b) => {
                 const pa = a.position ?? 999999, pb = b.position ?? 999999;
                 if (pa !== pb) return pa - pb;
@@ -162,7 +159,7 @@
         `;
             li.appendChild(meta);
 
-            // Skjema for å endre rekkefølge (position)
+
             const form = document.createElement('form');
             form.className = 'inline';
             form.innerHTML = `
@@ -240,7 +237,7 @@
             return;
         }
 
-        // Normaliser: bare tall -> prefiksér
+
         const quayId = /^\d+$/.test(rawQuay) ? `NSR:Quay:${rawQuay}` : rawQuay;
 
         msg.className = 'info';
@@ -312,7 +309,6 @@
         notAuthPanel.hidden = true;
     }
 
-    // enkel escaping
     function escapeHtml(s) {
         return String(s)
             .replaceAll('&','&amp;')

@@ -8,14 +8,12 @@ import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Enkel Entur-klient uten eksterne JSON-bibliotek. */
 public class EnturClient {
     private static final String JP_ENDPOINT  = "https://api.entur.io/journey-planner/v3/graphql";
     private static final String GEO_ENDPOINT = "https://api.entur.io/geocoder/v1/autocomplete";
 
     private final HttpClient http;
-    private final String clientName; // brukes i ET-Client-Name-header
-
+    private final String clientName;
     public EnturClient(String clientName) {
         this.clientName = clientName;
         this.http = HttpClient.newBuilder()
@@ -23,7 +21,7 @@ public class EnturClient {
                 .build();
     }
 
-    /** Hent avganger for en Quay (returnerer rå JSON fra Journey Planner). */
+
     public String fetchDepartures(String quayId, int limit) throws Exception {
         if (quayId == null || quayId.isBlank()) throw new IllegalArgumentException("quayId mangler");
         if (limit <= 0) limit = 10;
@@ -72,14 +70,12 @@ public class EnturClient {
         return resp.body();
     }
 
-    /* =====================  GEOCODER (AUTOSØK)  ===================== */
 
-    /** Praktisk overload uten fokuspunkt. */
     public String searchStops(String q, int limit) throws Exception {
         return searchStops(q, limit, null, null);
     }
 
-    /** Autosøk med valgfritt fokuspunkt. */
+
     public String searchStops(String q, int limit, String lat, String lon) throws Exception {
         if (q == null || q.isBlank()) throw new IllegalArgumentException("q mangler");
         if (limit <= 0) limit = 8;
@@ -127,7 +123,7 @@ public class EnturClient {
         throw new RuntimeException("Entur geocoder " + last.statusCode() + ": " + last.body());
     }
 
-    /** Autosøk begrenset til sirkel (region) i meter rundt lat/lon. */
+
     public String searchStopsInRegion(String q, int limit, String lat, String lon, int radiusMeters) throws Exception {
         if (q == null || q.isBlank()) throw new IllegalArgumentException("q mangler");
         if (limit <= 0) limit = 8;
@@ -138,7 +134,7 @@ public class EnturClient {
                 "&focus.point.lat=" + URLEncoder.encode(lat, StandardCharsets.UTF_8) +
                         "&focus.point.lon=" + URLEncoder.encode(lon, StandardCharsets.UTF_8);
 
-        // boundary.circle begrenser treff til region
+
         String boundary =
                 "&boundary.circle.lat=" + URLEncoder.encode(lat, StandardCharsets.UTF_8) +
                         "&boundary.circle.lon=" + URLEncoder.encode(lon, StandardCharsets.UTF_8) +
@@ -183,9 +179,7 @@ public class EnturClient {
         throw new RuntimeException("Entur geocoder " + last.statusCode() + ": " + last.body());
     }
 
-    /* ===========  StopPlace → Quay-oppløsning (for avganger)  =========== */
 
-    /** Tar enten NSR:StopPlace:* eller NSR:Quay:* og returnerer en Quay-id. */
     public String resolveQuayId(String stopOrQuayId) throws Exception {
         if (stopOrQuayId == null || stopOrQuayId.isBlank()) return null;
         if (stopOrQuayId.startsWith("NSR:Quay:")) return stopOrQuayId;
@@ -217,9 +211,6 @@ public class EnturClient {
         return m.find() ? m.group() : stopOrQuayId; // fallback: returner original hvis ingen quay
     }
 
-    /* =====================  Utils  ===================== */
-
-    /** Liten helper for å escape JSON-strenger uten bibliotek. */
     private static String jsonEscape(String s) {
         if (s == null) return "null";
         StringBuilder sb = new StringBuilder(s.length() + 16);

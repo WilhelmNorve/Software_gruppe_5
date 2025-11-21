@@ -5,10 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-/**
- * Finner nærmeste stopp (Quay) til en gitt lat/lon ved å lese fra samme JSON
- * som brukes i stopSearch (stops_630_only.json).
- */
 public class NearestStopFinder {
 
     public static final class Stop {

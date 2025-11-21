@@ -11,7 +11,6 @@ public class UserEmailUpdater {
         this.jdbcUrl = jdbcUrl;
     }
 
-    /** Oppdaterer e-post basert på brukernavn. Returnerer antall oppdaterte rader (0 eller 1). */
     public int updateMailByUsername(String username, String newMail) throws Exception {
         final String sql = "UPDATE users SET Mail = ? WHERE username = ?";
         try (Connection conn = DriverManager.getConnection(jdbcUrl);

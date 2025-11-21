@@ -70,16 +70,6 @@
 </section>
 
 <script>
-    /**
-     * Denne versjonen legger til autosøk/forlag for stopp.
-     * Den forventer en backend-endepunkt:
-     *   GET /api/entur/stops?q=<tekst>&limit=8
-     * som returnerer { stops: [{ id, name, locality, type, quayId? }] }
-     *
-     * Du kan mappe dette mot Entur Geocoder Autocomplete i backend, f.eks.:
-     *   https://api.entur.io/geocoder/v1/autocomplete?text=<q>&lang=no&size=<limit>&layers=stop
-     * og returnere StopPlace/Quay med id/navn/municipality.
-     */
 
     const form = document.getElementById('form');
     const fromInput = document.getElementById('fromInput');
@@ -91,11 +81,11 @@
     const stopTitle = document.getElementById('stopTitle');
     const list = document.getElementById('list');
 
-    // Hold valgt stopp-id på input.dataset.stopId
+
     fromInput.dataset.stopId = '';
     toInput.dataset.stopId = '';
 
-    // Init autocomplete på begge felt
+
     attachAutocomplete(fromInput, acFrom, pickFrom);
     attachAutocomplete(toInput, acTo, pickTo);
 
@@ -125,8 +115,7 @@
             return;
         }
 
-        // Demo: Hent avganger fra FRA-stoppet (som i originalkoden).
-        // Du kan senere bytte til reiseplanlegger mellom fraId -> toId.
+
         try {
             msg.textContent = 'Henter avganger …';
             const quayId = normalizeQuay(fromId);
@@ -169,7 +158,7 @@
         }
     }
 
-    // -------- Autocomplete ----------
+
     function attachAutocomplete(inputEl, panelEl, onPick){
         let items = []; // sist returnerte forslag
         let highlighted = -1; // index i items
@@ -239,7 +228,7 @@
     }
 
     function normalizeStops(raw){
-        // Forsøk å støtte flere mulige backend-formater
+
         return raw.map(x => ({
             id: x.id || x.quayId || x.quay_id || x.gid || '',
             name: x.name || x.label || x.title || '',

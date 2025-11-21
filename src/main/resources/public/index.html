@@ -8,7 +8,6 @@
 </head>
 <body>
 <div class="page">
-    <!-- LOGIN-KORT -->
     <div class="card" id="loginCard">
         <h1>Velkommen Vennligst<br>Logg Inn 🚍</h1>
 
@@ -25,7 +24,7 @@
 
             <button type="submit">Logg inn</button>
 
-            <!-- Slett konto-knapp under login -->
+
             <button type="button" id="deleteBtn">Slett konto</button>
 
             <p id="msg" class="info" aria-live="polite"></p>
@@ -33,7 +32,7 @@
         </form>
     </div>
 
-    <!-- REGISTRER-KORT (SKJULT I STARTEN) -->
+
     <div class="card hidden" id="registerCard">
         <h1>Registrer Ny Bruker 🚍</h1>
 
@@ -59,7 +58,6 @@
         </form>
     </div>
 
-    <!-- BUNNTEKST / BYTTE MELLOM LOGIN OG REGISTRERING -->
     <p class="bottom-text" id="loginFooter">
         Har Ikke Bruker?
         <button type="button" id="showRegister" class="link-button">Registrer Deg</button>
@@ -73,7 +71,7 @@
 
 <script>
     (function () {
-        // Elementer
+
         const loginCard      = document.getElementById("loginCard");
         const registerCard   = document.getElementById("registerCard");
         const loginFooter    = document.getElementById("loginFooter");
@@ -90,7 +88,7 @@
         const deleteBtn  = document.getElementById("deleteBtn");
         const regBtn     = formReg.querySelector("button[type=submit]");
 
-        // Vis/skjul kort
+
         function showLoginCard() {
             loginCard.classList.remove("hidden");
             loginFooter.classList.remove("hidden");
@@ -112,7 +110,7 @@
         showRegisterBtn.addEventListener("click", showRegisterCard);
         showLoginBtn.addEventListener("click", showLoginCard);
 
-        // LOGIN
+
         formLogin.addEventListener("submit", async (e) => {
             e.preventDefault();
 
@@ -137,7 +135,7 @@
                 });
 
                 if (resp.ok) {
-                    // Gå til avganger-side
+
                     location.href = "departures2.html";
                     return;
                 }
@@ -158,7 +156,6 @@
             }
         });
 
-        // REGISTRERING
         formReg.addEventListener("submit", async (e) => {
             e.preventDefault();
 
@@ -218,7 +215,7 @@
             }
         });
 
-        // SLETT KONTO – send til egen sletteside
+
         deleteBtn.addEventListener("click", () => {
             const username = document.getElementById("username").value.trim();
 
